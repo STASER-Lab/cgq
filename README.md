@@ -3,6 +3,12 @@
 Canvas Group Quiz is a gleam CLI tool to create per-group quizzes.
 
 ## Usage
+> ![IMPORTANT]
+> You need the env vars of `CANVAS_API_TOKEN` set to your API token.
+> You can find the steps to get it [here](https://learninganalytics.ubc.ca/guides/get-started-with-the-canvas-api/).
+
+If you want to change the domain for the canvas API, you can set the `CANVAS_API_DOMAIN` env var.
+
 To create a quiz for a course, you will need the `course_id`.
 You can list the courses where you are `TA` or `Teacher` via
 
@@ -12,7 +18,7 @@ gleam run -- list courses <enrollment_type>
 
 This will show you a table of **active** course names and IDs:
 
-```sh
+```
 ┌───────────────────────────────────────────────────────────────────────────────────┬────────┐
 │                                       Name                                        │   ID   │
 ├───────────────────────────────────────────────────────────────────────────────────┼────────┤
@@ -30,7 +36,7 @@ gleam run -- list assignment_groups <course_id>
 
 It will show you the following table:
 
-```sh
+```
 ┌─────────────┬────────┐
 │    Name     │   ID   │
 ├─────────────┼────────┤
@@ -59,7 +65,7 @@ gleam run -- create <course_id> \
 ```
 
 And it will print out the progress:
-```sh
+```
 Creating quiz for group <group_name>...
 Created quiz with ID <quiz_id>.  Adding quiz questions...
 Questions created.  Assigning quiz to group...

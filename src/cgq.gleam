@@ -5,9 +5,7 @@ import gleam/option
 import gleam/result
 import gleam/string
 
-import argv
 import birl
-import clip
 import envoy
 
 import canvas
@@ -40,10 +38,11 @@ pub type Error {
 
 pub fn main() -> Result(Nil, Error) {
   {
-    use domain <- result.try(
-      envoy.get("CANVAS_API_DOMAIN")
-      |> result.replace_error(FailedToGetEnvironmentVariables),
-    )
+    let domain =
+      result.unwrap(
+        envoy.get("CANVAS_API_DOMAIN"),
+        "https://canvas.ubc.ca/api/v1",
+      )
     use token <- result.try(
       envoy.get("CANVAS_API_TOKEN")
       |> result.replace_error(FailedToGetEnvironmentVariables),
