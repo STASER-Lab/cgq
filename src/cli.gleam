@@ -2,6 +2,7 @@ import gleam/option
 import gleam/result
 import gleam/string
 
+import argv
 import birl
 import clip
 import clip/arg
@@ -32,6 +33,15 @@ pub type List {
 }
 
 const cli_name = "cgq"
+
+pub fn cli() -> Result(Args, String) {
+  clip.subcommands([#("create", create_command()), #("list", list_command())])
+  |> clip.help(help.simple(
+    cli_name,
+    "Create a group quiz or fetch quiz results",
+  ))
+  |> clip.run(argv.load().arguments)
+}
 
 pub fn create_command() -> clip.Command(Args) {
   clip.command({

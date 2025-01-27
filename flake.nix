@@ -1,5 +1,5 @@
 {
-  description = "basic flake";
+  description = "build and run cgq";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -30,6 +30,12 @@
           src = ./.;
           erlangPackage = pkgs.erlang_27;
         };
+
+        build-deps = [
+          pkgs.elixir
+          pkgs.zig
+          pkgs.p7zip
+        ];
       in
       {
         checks = {
@@ -42,6 +48,10 @@
 
         devShells.default = pkgs.mkShell {
           inputsFrom = [ default ];
+
+          packages = build-deps;
+
+          env.MIX_ENV = "prod";
         };
       }
     );

@@ -7,7 +7,7 @@ import gleam/int
 import gleam/json
 import gleam/result
 
-import canvas/canvas
+import canvas
 
 pub type User {
   User(id: Int, name: String)

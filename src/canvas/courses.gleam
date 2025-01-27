@@ -6,7 +6,7 @@ import gleam/json
 import gleam/option
 import gleam/result
 
-import canvas/canvas
+import canvas
 
 pub type Course {
   Course(id: Int, name: option.Option(String))

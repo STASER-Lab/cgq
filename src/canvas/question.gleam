@@ -6,7 +6,7 @@ import gleam/int
 import gleam/option
 import gleam/result
 
-import canvas/canvas
+import canvas
 import canvas/form
 
 pub type Question {

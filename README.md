@@ -68,6 +68,22 @@ Quiz assigned.
 
 ## Development
 
+To build locally you can use
 ```sh
-gleam run   # Run the project
+gleam clean
+gleam run
+```
+
+To build the release version, you will need to
+```sh
+mix deps.get
+mix clean
+mix compile
+mix release
+```
+
+This will use [burrito](https://github.com/burrito-elixir/burrito) to build the application into `burrito_out`.
+If you want to rebuild the application, you have to clear the cache:
+```sh
+burrito_out/<binary_name> maintenance uninstall
 ```

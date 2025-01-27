@@ -5,7 +5,7 @@ import gleam/int
 import gleam/json
 import gleam/result
 
-import canvas/canvas
+import canvas
 
 pub type AssignmentGroup {
   AssignmentGroup(id: Int, name: String)

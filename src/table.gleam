@@ -39,16 +39,8 @@ pub type Align {
   Center
 }
 
-pub type TableBuilder(value) {
-  TableBuilder(rows: List(value), columns: List(Column(value)))
-}
-
-pub fn table(rows: List(value)) -> TableBuilder(value) {
-  TableBuilder(rows, [])
-}
-
-pub fn column(header: String, getter: fn(value) -> String) -> Column(value) {
-  Column(header, Right, getter)
+pub fn table(rows: List(value)) -> Table(value) {
+  Table(columns: [], rows:)
 }
 
 pub fn param(f: fn(a) -> b) -> fn(a) -> b {
@@ -56,18 +48,13 @@ pub fn param(f: fn(a) -> b) -> fn(a) -> b {
 }
 
 pub fn with(
-  builder: TableBuilder(value),
+  builder: Table(value),
   header: String,
   align: Align,
   getter: fn(value) -> String,
-) -> TableBuilder(value) {
-  let TableBuilder(rows, columns) = builder
-  TableBuilder(rows, [Column(header, align, getter), ..columns])
-}
-
-pub fn build(builder: TableBuilder(value)) -> Table(value) {
-  let TableBuilder(rows, columns) = builder
-  Table(list.reverse(columns), rows)
+) -> Table(value) {
+  let Table(columns:, rows:) = builder
+  Table(columns: [Column(header, align, getter), ..columns], rows:)
 }
 
 fn calculate_widths(headers: List(String), values: List(String)) -> List(Int) {
@@ -81,7 +68,8 @@ fn calculate_widths(headers: List(String), values: List(String)) -> List(Int) {
 }
 
 pub fn print(table: Table(value)) -> Nil {
-  let Table(columns, rows) = table
+  let Table(columns:, rows:) = table
+  let columns = list.reverse(columns)
 
   let headers = list.map(columns, fn(col) { col.header })
   let aligns = list.map(columns, fn(col) { col.align })

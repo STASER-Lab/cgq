@@ -5,7 +5,7 @@ import gleam/int
 import gleam/json
 import gleam/result
 
-import canvas/canvas
+import canvas
 import canvas/user
 
 pub type Group {

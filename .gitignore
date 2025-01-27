@@ -15,5 +15,8 @@
 !src/canvas/
 !src/canvas/*.gleam
 
-!test/
-!test/*.gleam
+# release building
+!lib/
+!lib/cgq.ex
+!mix.exs
+!mix.lock

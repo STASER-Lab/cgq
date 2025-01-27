@@ -10,7 +10,7 @@ import gleam/result
 
 import birl
 
-import canvas/canvas
+import canvas
 import canvas/form
 
 pub type AssignmentOverride {
