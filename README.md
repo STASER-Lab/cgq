@@ -3,7 +3,7 @@
 Canvas Group Quiz is a gleam CLI tool to create per-group quizzes.
 
 ## Usage
-> ![IMPORTANT]
+> [!IMPORTANT]
 > You need the env vars of `CANVAS_API_TOKEN` set to your API token.
 > You can find the steps to get it [here](https://learninganalytics.ubc.ca/guides/get-started-with-the-canvas-api/).
 
