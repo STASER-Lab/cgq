@@ -16,6 +16,7 @@ import canvas/quiz
 pub type Args {
   Create(
     course_id: Int,
+    group_id: option.Option(Int),
     title: option.Option(String),
     description: option.Option(String),
     quiz_type: option.Option(quiz.QuizType),
@@ -29,6 +30,7 @@ pub type Args {
 
 pub type List {
   Courses(enrollment_type: courses.EnrollmentType)
+  Groups(course_id: Int)
   AssignmentGroups(course_id: Int)
 }
 
@@ -46,6 +48,7 @@ pub fn cli() -> Result(Args, String) {
 pub fn create_command() -> clip.Command(Args) {
   clip.command({
     use course_id <- clip.parameter
+    use group_id: option.Option(Int) <- clip.parameter
     use title <- clip.parameter
     use description <- clip.parameter
     use quiz_type <- clip.parameter
@@ -56,6 +59,7 @@ pub fn create_command() -> clip.Command(Args) {
 
     Create(
       course_id:,
+      group_id:,
       title:,
       description:,
       quiz_type:,
@@ -67,8 +71,15 @@ pub fn create_command() -> clip.Command(Args) {
   })
   |> clip.arg(
     arg.new("course_id")
-    |> arg.help("The unique identifier for the course")
+    |> arg.help("The unique identifier for the course.")
     |> arg.int,
+  )
+  |> clip.opt(
+    opt.new("group_id")
+    |> opt.help("The unique identifier for a group.")
+    |> opt.int
+    |> opt.map(option.Some)
+    |> opt.default(option.None),
   )
   |> clip.opt(
     opt.new("title")
@@ -178,6 +189,21 @@ pub fn list_command() -> clip.Command(Args) {
         "List of your active courses.",
       ))
     }),
+    #("groups", {
+      clip.command({
+        use course_id <- clip.parameter
+        Groups(course_id:) |> List
+      })
+      |> clip.arg(
+        arg.new("course_id")
+        |> arg.help("The unique identifier for the course.")
+        |> arg.int,
+      )
+      |> clip.help(help.simple(
+        cli_name <> " list groups",
+        "List of groups for the course.",
+      ))
+    }),
     #("assignment_groups", {
       clip.command({
         use course_id <- clip.parameter
@@ -185,7 +211,7 @@ pub fn list_command() -> clip.Command(Args) {
       })
       |> clip.arg(
         arg.new("course_id")
-        |> arg.help("The unique identifier for the course")
+        |> arg.help("The unique identifier for the course.")
         |> arg.int,
       )
       |> clip.help(help.simple(
@@ -196,6 +222,6 @@ pub fn list_command() -> clip.Command(Args) {
   ])
   |> clip.help(help.simple(
     cli_name <> " list",
-    "List your courses or assignment groups for a course.",
+    "List your courses, groups, or assignment groups for a course.",
   ))
 }

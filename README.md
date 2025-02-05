@@ -4,7 +4,7 @@ Canvas Group Quiz is a gleam CLI tool to create per-group quizzes.
 
 ## Usage
 > [!IMPORTANT]
-> You need the env vars of `CANVAS_API_TOKEN` set to your API token.
+> You need to set the env var `CANVAS_API_TOKEN` to your API token.
 > You can find the steps to get it [here](https://learninganalytics.ubc.ca/guides/get-started-with-the-canvas-api/).
 
 If you want to change the domain for the canvas API, you can set the `CANVAS_API_DOMAIN` env var.
@@ -51,18 +51,22 @@ You can create a quiz using the following command:
 
 > [!IMPORTANT]
 > Currently, questions can only be created in gleam code itself.
-> Future work will allow loading it through a file
+> Future work will allow loading it through a file.
+> You can see the code in [cgq.gleam](./src/cgq.gleam).
 
 ```sh
 gleam run -- create <course_id> \
-    --title "Week 8" \
+    --title "Week 5" \
     --description "Weekly evaluations." \
     --quiz_type "graded_survey" \
-    --assignment_group "<assignment_group_id>" \
-    --due_at "2025-03-01 23:59.999-8:00" \
-    --unlock_at "2025-02-01 23:59.999-8:00" \
+    --assignment_group_id "<assignment_group_id>" \
+    --due_at "2025-02-14 23:59.999-8:00" \
+    --unlock_at "2025-02-07 23:59.999-8:00" \
     --published "False"
 ```
+
+> [!NOTE]
+> The group name will be added to the quiz title.
 
 And it will print out the progress:
 ```
@@ -70,6 +74,39 @@ Creating quiz for group <group_name>...
 Created quiz with ID <quiz_id>.  Adding quiz questions...
 Questions created.  Assigning quiz to group...
 Quiz assigned.
+```
+
+You can also make a quiz for a single group using the `<group_id>` option:
+
+```sh
+gleam run -- create <course_id> \
+    --group_id "<group_name>" \
+    --title "Week 5" \
+    --description "Weekly evaluations." \
+    --quiz_type "graded_survey" \
+    --assignment_group_id "<assignment_group_id>" \
+    --due_at "2025-02-14 23:59.999-8:00" \
+    --unlock_at "2025-02-07 23:59.999-8:00" \
+    --published "False"
+```
+
+To get an ID for a group, you can use the command
+
+```sh
+gleam run -- list groups <course_id>
+```
+
+Which will output something like:
+```
+┌────────────────────────┬────────┬─────────┐
+│          Name          │   ID   │ Members │
+├────────────────────────┼────────┼─────────┤
+│ A                      │ ###### │       6 │
+│ BrethooCodes           │ ###### │       5 │
+│ Teams 15               │ ###### │       5 │
+│ Teams 21               │ ###### │       5 │
+│ The Stragglers         │ ###### │       5 │
+└────────────────────────┴────────┴─────────┘
 ```
 
 ## Development
@@ -89,7 +126,10 @@ mix release
 ```
 
 This will use [burrito](https://github.com/burrito-elixir/burrito) to build the application into `burrito_out`.
+
 If you want to rebuild the application, you have to clear the cache:
 ```sh
 burrito_out/<binary_name> maintenance uninstall
 ```
+
+In the future, I plan to use `nix` for building the executables with a workflow for publishing.

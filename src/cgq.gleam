@@ -7,6 +7,7 @@ import gleam/string
 
 import birl
 import envoy
+import trellis
 
 import canvas
 import canvas/assignment_groups
@@ -17,7 +18,6 @@ import canvas/group
 import canvas/question
 import canvas/quiz
 import cli
-import table
 
 pub type Error {
   FailedToGetArgs(String)
@@ -31,6 +31,7 @@ pub type Error {
   FailedToCreateQuestion(canvas.Error)
   FailedToCreateAssignmentOverride(canvas.Error)
   FailedToEditAssignment(canvas.Error)
+  FailedToPublish(canvas.Error)
 
   FailedToListCourses(canvas.Error)
   FailedToListAssignmentGroups(canvas.Error)
@@ -55,6 +56,7 @@ pub fn main() -> Result(Nil, Error) {
     case arg {
       cli.Create(
         course_id:,
+        group_id:,
         title:,
         description:,
         quiz_type:,
@@ -62,30 +64,102 @@ pub fn main() -> Result(Nil, Error) {
         due_at:,
         unlock_at:,
         published:,
-      ) ->
-        quiz.Create(
-          title:,
-          description:,
-          quiz_type:,
-          assignment_group_id:,
-          published:,
-        )
-        |> create(canvas:, course_id:, params: _, due_at:, unlock_at:)
+      ) -> {
+        let params =
+          quiz.Create(title:, description:, quiz_type:, assignment_group_id:)
+        case group_id {
+          option.Some(group_id) ->
+            create_for_group(
+              canvas:,
+              course_id:,
+              group_id:,
+              params:,
+              due_at:,
+              unlock_at:,
+              published:,
+            )
+          option.None ->
+            create_per_group(
+              canvas:,
+              course_id:,
+              params:,
+              due_at:,
+              unlock_at:,
+              published:,
+            )
+        }
+      }
       cli.List(list) -> {
         case list {
           cli.Courses(enrollment_type:) ->
             list_courses(canvas:, enrollment_type:)
           cli.AssignmentGroups(course_id:) ->
             list_assignment_groups(canvas:, course_id:)
+          cli.Groups(course_id:) -> list_groups(canvas:, course_id:)
         }
       }
     }
   }
   |> result.map_error({
     use err <- form.parameter
-    err |> string.inspect |> io.println_error
+    case err {
+      FailedToGetArgs(str) -> str
+      _ -> err |> string.inspect
+    }
+    |> {
+      use err <- form.parameter
+      "Failed with error of " <> err <> ".  Please use -h to see the help menu."
+    }
+    |> io.println_error
     err
   })
+}
+
+fn create_per_group(
+  canvas canvas: canvas.Canvas,
+  course_id course_id: Int,
+  params params: quiz.QuizParams,
+  due_at due_at: option.Option(birl.Time),
+  unlock_at unlock_at: option.Option(birl.Time),
+  published published: option.Option(Bool),
+) {
+  use groups <- result.try(
+    group.list_groups(canvas, course_id:)
+    |> result.map_error(FailedToListGroups),
+  )
+
+  {
+    use group <- list.map(groups)
+
+    create(
+      canvas:,
+      course_id:,
+      params:,
+      due_at:,
+      unlock_at:,
+      group:,
+      published:,
+    )
+  }
+  |> result.all
+  |> result.replace(Nil)
+}
+
+fn create_for_group(
+  canvas canvas: canvas.Canvas,
+  course_id course_id: Int,
+  group_id group_id: Int,
+  params params: quiz.QuizParams,
+  due_at due_at: option.Option(birl.Time),
+  unlock_at unlock_at: option.Option(birl.Time),
+  published published: option.Option(Bool),
+) {
+  use group <- result.try(
+    group.get_group(canvas:, group_id:)
+    |> result.map_error(FailedToListGroups),
+  )
+
+  create(canvas:, course_id:, params:, due_at:, unlock_at:, group:, published:)
 }
 
 fn create(
@@ -94,18 +168,16 @@ fn create(
   params params: quiz.QuizParams,
   due_at due_at: option.Option(birl.Time),
   unlock_at unlock_at: option.Option(birl.Time),
+  group group: group.Group,
+  published published: option.Option(Bool),
 ) {
-  use groups <- result.try(
-    group.list_groups(canvas, course_id:)
-    |> result.map_error(FailedToListGroups),
-  )
-
-  // TODO: switch back to mapping
-  use group <- result.try(
-    list.first(groups) |> result.replace_error(FailedToParseDate),
-  )
-  //use group <- list.map(groups)
   let group_name = group.name
+
+  let params =
+    quiz.Create(
+      ..params,
+      title: option.map(params.title, fn(title) { title <> ": " <> group_name }),
+    )
 
   io.println("Creating quiz for group " <> group_name <> "...")
 
@@ -149,7 +221,7 @@ fn create(
 
   io.println("Questions created.  Assigning quiz to group...")
 
-  use _ <- result.map(
+  use _ <- result.try(
     assignment_override.AssignmentOverride(
       assignment_id:,
       quiz_id:,
@@ -165,7 +237,21 @@ fn create(
     |> result.map_error(FailedToCreateAssignmentOverride),
   )
 
-  io.println("Quiz assigned.")
+  io.print("Quiz assigned.")
+
+  case published {
+    option.Some(_) -> {
+      io.println("  Publishing...")
+
+      use _ <- result.map(
+        quiz.publish_quiz(canvas:, course_id:, quiz_id:)
+        |> result.map_error(FailedToPublish),
+      )
+
+      io.println("Published.")
+    }
+    option.None -> Ok(Nil)
+  }
 }
 
 fn create_question(
@@ -230,17 +316,18 @@ fn list_courses(
     #(course.id, name |> string.trim)
   }
 
-  table.table(courses)
-  |> table.with("Name", table.Left, {
-    use #(_, name) <- table.param
+  trellis.table(courses)
+  |> trellis.with("Name", trellis.Left, {
+    use #(_, name) <- trellis.param
     name
   })
-  |> table.with("ID", table.Right, {
-    use #(id, _) <- table.param
+  |> trellis.with("ID", trellis.Right, {
+    use #(id, _) <- trellis.param
     id
     |> int.to_string
   })
-  |> table.print
+  |> trellis.to_string
+  |> io.println
 }
 
 fn list_assignment_groups(
@@ -252,14 +339,38 @@ fn list_assignment_groups(
     |> result.map_error(FailedToListAssignmentGroups),
   )
 
-  table.table(assignment_groups)
-  |> table.with("Name", table.Left, {
-    use assignment_groups.AssignmentGroup(name:, id: _) <- table.param
+  trellis.table(assignment_groups)
+  |> trellis.with("Name", trellis.Left, {
+    use assignment_groups.AssignmentGroup(name:, id: _) <- trellis.param
     name
   })
-  |> table.with("ID", table.Right, {
-    use assignment_groups.AssignmentGroup(name: _, id:) <- table.param
+  |> trellis.with("ID", trellis.Right, {
+    use assignment_groups.AssignmentGroup(name: _, id:) <- trellis.param
     id |> int.to_string
   })
-  |> table.print
+  |> trellis.to_string
+  |> io.println
+}
+
+fn list_groups(canvas canvas: canvas.Canvas, course_id course_id: Int) {
+  use groups <- result.map(
+    group.list_groups(canvas:, course_id:)
+    |> result.map_error(FailedToListAssignmentGroups),
+  )
+
+  trellis.table(groups)
+  |> trellis.with("Name", trellis.Left, {
+    use group.Group(name:, id: _, members_count: _) <- trellis.param
+    name
+  })
+  |> trellis.with("ID", trellis.Right, {
+    use group.Group(name: _, id:, members_count: _) <- trellis.param
+    id |> int.to_string
+  })
+  |> trellis.with("Members", trellis.Right, {
+    use group.Group(name: _, id: _, members_count:) <- trellis.param
+    members_count |> int.to_string
+  })
+  |> trellis.to_string
+  |> io.println
 }

@@ -20,3 +20,4 @@
 !lib/cgq.ex
 !mix.exs
 !mix.lock
+!deps.nix

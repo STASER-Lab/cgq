@@ -21,7 +21,6 @@ pub type QuizParams {
     description: option.Option(String),
     quiz_type: option.Option(QuizType),
     assignment_group_id: option.Option(Int),
-    published: option.Option(Bool),
   )
 }
 
@@ -33,8 +32,7 @@ pub type QuizType {
 }
 
 fn encoder(params params: QuizParams) -> form.Form {
-  let Create(title:, description:, quiz_type:, assignment_group_id:, published:) =
-    params
+  let Create(title:, description:, quiz_type:, assignment_group_id:) = params
 
   form.new()
   |> form.add("quiz[title]", form.optional(title, form.string))
@@ -57,8 +55,6 @@ fn encoder(params params: QuizParams) -> form.Form {
     "quiz[assignment_group_id]",
     form.optional(assignment_group_id, form.int),
   )
-  |> form.add("quiz[published]", form.optional(published, form.bool))
-  |> form.add("quiz[only_visible_to_overrides]", form.bool(True))
 }
 
 fn decoder() -> decode.Decoder(Quiz) {
@@ -79,7 +75,12 @@ pub fn create_new_quiz(
   use resp <- result.try(
     req
     |> request.set_method(http.Post)
-    |> request.set_body(encoder(params:) |> form.to_string)
+    |> request.set_body(
+      encoder(params:)
+      |> form.add("quiz[published]", form.bool(False))
+      |> form.add("quiz[only_visible_to_overrides]", form.bool(True))
+      |> form.to_string,
+    )
     |> httpc.send
     |> result.map_error(canvas.FailedToSendRequest),
   )
@@ -92,4 +93,37 @@ pub fn create_new_quiz(
   resp.body
   |> json.parse(using: decoder())
   |> result.map_error(canvas.FailedToParseJson)
+}
+
+pub fn publish_quiz(
+  canvas canvas: canvas.Canvas,
+  course_id course_id: Int,
+  quiz_id quiz_id: Int,
+) -> Result(Nil, canvas.Error) {
+  let endpoint =
+    "courses/"
+    <> int.to_string(course_id)
+    <> "/quizzes/"
+    <> int.to_string(quiz_id)
+
+  use req <- result.try(canvas.request(canvas:, endpoint:))
+
+  use resp <- result.try(
+    req
+    |> request.set_method(http.Put)
+    |> request.set_body(
+      form.new()
+      |> form.add("quiz[published]", form.bool(True))
+      |> form.to_string,
+    )
+    |> httpc.send
+    |> result.map_error(canvas.FailedToSendRequest),
+  )
+
+  use <- bool.guard(
+    resp.status != 200,
+    resp.status |> canvas.FailedRequestStatus |> Error,
+  )
+
+  Ok(Nil)
 }

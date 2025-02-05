@@ -62,6 +62,7 @@ defmodule CGQ.MixProject do
       {:gleam_httpc, ">= 4.0.0 and < 5.0.0"},
       {:gleam_json, ">= 2.3.0 and < 3.0.0"},
       {:gleam_stdlib, ">= 0.34.0 and < 2.0.0"},
+      {:trellis, ">= 1.1.0 and < 2.0.0"},
       {:burrito, "~> 1.0"},
     ]
   end

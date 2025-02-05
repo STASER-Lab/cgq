@@ -3,6 +3,7 @@ import gleam/dynamic/decode
 import gleam/httpc
 import gleam/int
 import gleam/json
+import gleam/list
 import gleam/result
 
 import canvas
@@ -23,7 +24,58 @@ pub fn list_groups(
   canvas canvas: canvas.Canvas,
   course_id course_id: Int,
 ) -> Result(List(Group), canvas.Error) {
-  let endpoint = "courses/" <> int.to_string(course_id) <> "/groups"
+  do_list_groups(canvas:, course_id:, page: 1, groups: [])
+}
+
+fn do_list_groups(
+  canvas canvas: canvas.Canvas,
+  course_id course_id: Int,
+  page page: Int,
+  groups acc: List(Group),
+) -> Result(List(Group), canvas.Error) {
+  let endpoint =
+    "courses/"
+    <> int.to_string(course_id)
+    <> "/groups?page="
+    <> int.to_string(page)
+
+  use req <- result.try(canvas.request(canvas:, endpoint:))
+
+  use res <- result.try(
+    req
+    |> httpc.send
+    |> result.map_error(canvas.FailedToSendRequest),
+  )
+
+  use <- bool.guard(
+    res.status != 200,
+    res.status |> canvas.FailedRequestStatus |> Error,
+  )
+
+  let res =
+    res.body
+    |> json.parse(using: decode.list(decoder()))
+    |> result.map_error(canvas.FailedToParseJson)
+
+  use page_groups <- result.try(res)
+
+  case page_groups {
+    [] -> Ok(acc)
+    groups ->
+      do_list_groups(
+        canvas:,
+        course_id:,
+        page: page + 1,
+        groups: list.append(acc, groups),
+      )
+  }
+}
+
+pub fn get_group(
+  canvas canvas: canvas.Canvas,
+  group_id group_id: Int,
+) -> Result(Group, canvas.Error) {
+  let endpoint = "groups/" <> int.to_string(group_id)
 
   use req <- result.try(canvas.request(canvas:, endpoint:))
 
@@ -39,7 +91,7 @@ pub fn list_groups(
   )
 
   res.body
-  |> json.parse(using: decode.list(decoder()))
+  |> json.parse(using: decoder())
   |> result.map_error(canvas.FailedToParseJson)
 }
 
