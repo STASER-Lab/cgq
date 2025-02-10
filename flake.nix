@@ -82,6 +82,9 @@
             mix do archive.build, archive.install --force
             cd -
 
+            echo "installing rebar3"
+            mix local.rebar rebar3 ${pkgs.beam.packages.erlang_27.rebar3} --force
+
             echo "linking deps"
 
             ln -sfn ${deps}/deps deps

@@ -26,6 +26,7 @@ pub type Args {
     published: option.Option(Bool),
   )
   List(List)
+  Fetch(course_id: Int)
 }
 
 pub type List {
@@ -37,7 +38,11 @@ pub type List {
 const cli_name = "cgq"
 
 pub fn cli() -> Result(Args, String) {
-  clip.subcommands([#("create", create_command()), #("list", list_command())])
+  clip.subcommands([
+    #("create", create()),
+    #("list", list()),
+    #("fetch", fetch()),
+  ])
   |> clip.help(help.simple(
     cli_name,
     "Create a group quiz or fetch quiz results",
@@ -45,7 +50,7 @@ pub fn cli() -> Result(Args, String) {
   |> clip.run(argv.load().arguments)
 }
 
-pub fn create_command() -> clip.Command(Args) {
+pub fn create() -> clip.Command(Args) {
   clip.command({
     use course_id <- clip.parameter
     use group_id: option.Option(Int) <- clip.parameter
@@ -164,7 +169,7 @@ pub fn create_command() -> clip.Command(Args) {
   ))
 }
 
-pub fn list_command() -> clip.Command(Args) {
+pub fn list() -> clip.Command(Args) {
   clip.subcommands([
     #("courses", {
       clip.command({
@@ -224,4 +229,17 @@ pub fn list_command() -> clip.Command(Args) {
     cli_name <> " list",
     "List your courses, groups, or assignment groups for a course.",
   ))
+}
+
+fn fetch() -> clip.Command(Args) {
+  clip.command({
+    use course_id <- clip.parameter
+    Fetch(course_id:)
+  })
+  |> clip.arg(
+    arg.new("course_id")
+    |> arg.help("The unique identifier for the course.")
+    |> arg.int,
+  )
+  |> clip.help(help.simple(cli_name <> " fetch", "Fetch quiz results."))
 }

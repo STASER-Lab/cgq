@@ -20,10 +20,15 @@ pub fn decoder() -> decode.Decoder(User) {
 }
 
 pub fn get_user(
-  canvas: canvas.Canvas,
+  canvas canvas: canvas.Canvas,
+  course_id course_id: Int,
   user_id user_id: Int,
 ) -> Result(User, canvas.Error) {
-  let endpoint = "users/" <> int.to_string(user_id)
+  let endpoint =
+    "courses/"
+    <> int.to_string(course_id)
+    <> "/users/"
+    <> int.to_string(user_id)
 
   use req <- result.try(
     canvas
@@ -39,7 +44,9 @@ pub fn get_user(
 
   use <- bool.guard(
     resp.status != 200,
-    resp.status |> canvas.FailedRequestStatus |> Error,
+    resp.status
+      |> canvas.FailedRequestStatus
+      |> Error,
   )
 
   resp.body

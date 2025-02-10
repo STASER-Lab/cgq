@@ -5,14 +5,17 @@ import gleam/http/request
 import gleam/httpc
 import gleam/int
 import gleam/json
+import gleam/list
 import gleam/option
 import gleam/result
+import gleam/string
+import gleam/uri
 
 import canvas
 import canvas/form
 
 pub type Quiz {
-  Quiz(id: Int, assignment_id: Int)
+  Quiz(id: Int, assignment_id: Int, title: String)
 }
 
 pub type QuizParams {
@@ -60,7 +63,8 @@ fn encoder(params params: QuizParams) -> form.Form {
 fn decoder() -> decode.Decoder(Quiz) {
   use id <- decode.field("id", decode.int)
   use assignment_id <- decode.field("assignment_id", decode.int)
-  decode.success(Quiz(id:, assignment_id:))
+  use title <- decode.field("title", decode.string)
+  decode.success(Quiz(id:, assignment_id:, title:))
 }
 
 pub fn create_new_quiz(
@@ -126,4 +130,67 @@ pub fn publish_quiz(
   )
 
   Ok(Nil)
+}
+
+pub fn list_quizzes(
+  canvas canvas: canvas.Canvas,
+  course_id course_id: Int,
+  search_term search_term: String,
+) -> Result(List(Quiz), canvas.Error) {
+  loop_list_quizzes(canvas:, course_id:, search_term:, page: 1, quizzes: [])
+}
+
+fn loop_list_quizzes(
+  canvas canvas: canvas.Canvas,
+  course_id course_id: Int,
+  search_term search_term: String,
+  page page: Int,
+  quizzes acc: List(Quiz),
+) {
+  let query = [#("page", int.to_string(page))]
+
+  let query =
+    {
+      use <- bool.guard(search_term == "", query)
+      [#("search_term", search_term), ..query]
+    }
+    |> uri.query_to_string
+
+  let endpoint = "courses/" <> int.to_string(course_id) <> "/quizzes"
+
+  let endpoint =
+    [endpoint, query]
+    |> list.filter(fn(str) { str != "" })
+    |> string.join("?")
+    |> string.replace(each: " ", with: "%20")
+
+  use req <- result.try(canvas.request(canvas:, endpoint:))
+
+  use resp <- result.try(
+    req
+    |> httpc.send
+    |> result.map_error(canvas.FailedToSendRequest),
+  )
+
+  use <- bool.guard(
+    resp.status != 200,
+    resp.status |> canvas.FailedRequestStatus |> Error,
+  )
+
+  let res =
+    resp.body
+    |> json.parse(using: decode.list(decoder()))
+    |> result.map_error(canvas.FailedToParseJson)
+
+  use quizzes <- result.try(res)
+
+  use <- bool.guard(quizzes |> list.is_empty, acc |> Ok)
+
+  loop_list_quizzes(
+    canvas:,
+    course_id:,
+    search_term:,
+    page: page + 1,
+    quizzes: list.append(acc, quizzes),
+  )
 }

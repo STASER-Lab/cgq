@@ -24,10 +24,10 @@ pub fn list_groups(
   canvas canvas: canvas.Canvas,
   course_id course_id: Int,
 ) -> Result(List(Group), canvas.Error) {
-  do_list_groups(canvas:, course_id:, page: 1, groups: [])
+  loop_list_groups(canvas:, course_id:, page: 1, groups: [])
 }
 
-fn do_list_groups(
+fn loop_list_groups(
   canvas canvas: canvas.Canvas,
   course_id course_id: Int,
   page page: Int,
@@ -57,18 +57,12 @@ fn do_list_groups(
     |> json.parse(using: decode.list(decoder()))
     |> result.map_error(canvas.FailedToParseJson)
 
-  use page_groups <- result.try(res)
+  use groups <- result.try(res)
+  let groups = list.append(acc, groups)
 
-  case page_groups {
-    [] -> Ok(acc)
-    groups ->
-      do_list_groups(
-        canvas:,
-        course_id:,
-        page: page + 1,
-        groups: list.append(acc, groups),
-      )
-  }
+  use <- bool.guard(groups |> list.is_empty, acc |> Ok)
+
+  loop_list_groups(canvas:, course_id:, page: page + 1, groups:)
 }
 
 pub fn get_group(

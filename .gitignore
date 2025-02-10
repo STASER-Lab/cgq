@@ -14,6 +14,8 @@
 !src/*.gleam
 !src/canvas/
 !src/canvas/*.gleam
+!src/cgq/
+!src/cgq/*.gleam
 
 # release building
 !lib/
