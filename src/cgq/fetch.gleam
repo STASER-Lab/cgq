@@ -73,7 +73,7 @@ pub fn fetch(
   )
   |> trellis.with(
     column.new(header: "Complaint")
-    |> column.align(column.Right)
+    |> column.align(column.Left)
     |> column.render({
       use QuizSubmissions(user: _, quiz: _, pairs:) <- trellis.param
 

@@ -2,12 +2,22 @@
 
 Canvas Group Quiz is a gleam CLI tool to create per-group quizzes.
 
+## Table of Contents
+
+1. [Usage](#usage)  
+    - [List](#list)  
+    - [Create](#create)  
+    - [Fetch](#fetch)
+
 ## Usage
+
 > [!IMPORTANT]
 > You need to set the env var `CANVAS_API_TOKEN` to your API token.
 > You can find the steps to get it [here](https://learninganalytics.ubc.ca/guides/get-started-with-the-canvas-api/).
 
 If you want to change the domain for the canvas API, you can set the `CANVAS_API_DOMAIN` env var.
+
+### List
 
 To create a quiz for a course, you will need the `course_id`.
 You can list the courses where you are `TA` or `Teacher` via
@@ -46,6 +56,27 @@ It will show you the following table:
 │ Quizzes     │ ###### │
 └─────────────┴────────┘
 ```
+
+To get an ID for a group, you can use the command
+
+```sh
+gleam run -- list groups <course_id>
+```
+
+Which will output something like:
+```
+┌────────────────────────┬────────┬─────────┐
+│          Name          │   ID   │ Members │
+├────────────────────────┼────────┼─────────┤
+│ A                      │ ###### │       6 │
+│ BrethooCodes           │ ###### │       5 │
+│ Teams 15               │ ###### │       5 │
+│ Teams 21               │ ###### │       5 │
+│ The Stragglers         │ ###### │       5 │
+└────────────────────────┴────────┴─────────┘
+```
+
+### Create
 
 You can create a quiz using the following command:
 
@@ -90,23 +121,40 @@ gleam run -- create <course_id> \
     --published "False"
 ```
 
-To get an ID for a group, you can use the command
+### Fetch
+
+You will probably want to see the results for the quiz. You can use the `fetch` 
+command to fetch quiz results. It will fetch all quizzes from the course that 
+matches the title. For example, if you set the title to "Week 5", then you can 
+get the results via
 
 ```sh
-gleam run -- list groups <course_id>
+gleam run -- fetch <course_id> "Week 5"
 ```
 
-Which will output something like:
+Which will take some time as it fetches all the results. It will output
+
 ```
-┌────────────────────────┬────────┬─────────┐
-│          Name          │   ID   │ Members │
-├────────────────────────┼────────┼─────────┤
-│ A                      │ ###### │       6 │
-│ BrethooCodes           │ ###### │       5 │
-│ Teams 15               │ ###### │       5 │
-│ Teams 21               │ ###### │       5 │
-│ The Stragglers         │ ###### │       5 │
-└────────────────────────┴────────┴─────────┘
+Fetching...
+┌───────────────────────┬────────────────────────────────┬──────────────────────────────────────────┐
+│     Student Name      │           Quiz Title           │                Complaint                 │
+├───────────────────────┼────────────────────────────────┼──────────────────────────────────────────┤
+│ #### ######           │ Week 5: Group 1                │ ### #### ## ### ## ###### ## ##########  │
+│                       │                                │                                          │
+│ ###### ####           │ Week 5: Group 1                │ ### #### ### ######### # #######, ###### │
+│                       │                                │ ### #### ###### ##### ###### ## ## ####  │
+│                       │                                │ ###### ## ### ### #### #### ### ### #### │
+│                       │                                │ #### ## #### #####, ### ## ## ####### ## │
+│                       │                                │ #### ##### ## #### # ##########          │
+│                       │                                │ ######### ##### ###. # ##### ######, #   │
+│                       │                                │ #### ##### # ########## #### ### ### ### │
+│                       │                                │ #### ### ######## # ###### ##.           │
+│                       │                                │                                          │
+│ ##### ######          │ Week 5: Group 2                │ ## #### ####### ### ###### #### #### ### │
+│                       │                                │ ### ##### #####. #### ## ### ## ######   │
+│                       │                                │ #### #### ######## ## ######.            │
+│                       │                                │                                          │
+└───────────────────────┴────────────────────────────────┴──────────────────────────────────────────┘
 ```
 
 ## Development
