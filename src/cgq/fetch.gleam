@@ -89,7 +89,7 @@ pub fn fetch(
       |> string.join("\n")
       |> string.append("\n")
     })
-    |> column.wrap(40),
+    |> column.wrap(80),
   )
   |> trellis.to_string
   |> io.println

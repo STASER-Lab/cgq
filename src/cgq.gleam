@@ -83,8 +83,8 @@ pub fn main() -> Result(Nil, Error) {
           cli.Groups(course_id:) -> cgq_list.groups(canvas:, course_id:)
         }
         |> result.map_error(FailedToList)
-      cli.Fetch(course_id:) ->
-        cgq_fetch.fetch(canvas:, course_id:, quiz_title: "Week 4")
+      cli.Fetch(course_id:, quiz_title:) ->
+        cgq_fetch.fetch(canvas:, course_id:, quiz_title:)
         |> result.map_error(FailedToFetch)
     }
   }

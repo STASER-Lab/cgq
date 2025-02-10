@@ -26,7 +26,7 @@ pub type Args {
     published: option.Option(Bool),
   )
   List(List)
-  Fetch(course_id: Int)
+  Fetch(course_id: Int, quiz_title: String)
 }
 
 pub type List {
@@ -234,12 +234,17 @@ pub fn list() -> clip.Command(Args) {
 fn fetch() -> clip.Command(Args) {
   clip.command({
     use course_id <- clip.parameter
-    Fetch(course_id:)
+    use quiz_title <- clip.parameter
+    Fetch(course_id:, quiz_title:)
   })
   |> clip.arg(
     arg.new("course_id")
     |> arg.help("The unique identifier for the course.")
     |> arg.int,
+  )
+  |> clip.arg(
+    arg.new("quiz_title")
+    |> arg.help("The title used for creating the quiz."),
   )
   |> clip.help(help.simple(cli_name <> " fetch", "Fetch quiz results."))
 }
