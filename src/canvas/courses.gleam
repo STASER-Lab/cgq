@@ -1,7 +1,5 @@
-import gleam/bool
 import gleam/dynamic/decode
 import gleam/http/request
-import gleam/httpc
 import gleam/json
 import gleam/option
 import gleam/result
@@ -35,8 +33,7 @@ pub fn list_courses(
   let endpoint = "courses"
 
   use req <- result.try(canvas.request(canvas:, endpoint:))
-
-  use res <- result.try(
+  let req =
     req
     |> request.set_query([
       #("enrollment_type", case enrollment_type {
@@ -46,16 +43,10 @@ pub fn list_courses(
       }),
       #("enrollment_state", "active"),
     ])
-    |> httpc.send
-    |> result.map_error(canvas.FailedToSendRequest),
-  )
 
-  use <- bool.guard(
-    res.status != 200,
-    res.status |> canvas.FailedRequestStatus |> Error,
-  )
+  use res <- result.try(canvas.send(canvas:, req:))
 
-  res.body
+  res
   |> json.parse(using: decode.list(decoder()))
   |> result.map_error(canvas.FailedToParseJson)
 }

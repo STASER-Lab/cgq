@@ -1,8 +1,4 @@
-import gleam/bool
 import gleam/dynamic/decode
-import gleam/http
-import gleam/http/request
-import gleam/httpc
 import gleam/int
 import gleam/json
 import gleam/result
@@ -35,21 +31,9 @@ pub fn get_user(
     |> canvas.request(endpoint),
   )
 
-  use resp <- result.try(
-    req
-    |> request.set_method(http.Get)
-    |> httpc.send
-    |> result.map_error(canvas.FailedToSendRequest),
-  )
+  use res <- result.try(canvas.send(canvas:, req:))
 
-  use <- bool.guard(
-    resp.status != 200,
-    resp.status
-      |> canvas.FailedRequestStatus
-      |> Error,
-  )
-
-  resp.body
+  res
   |> json.parse(using: decoder())
   |> result.map_error(canvas.FailedToParseJson)
 }

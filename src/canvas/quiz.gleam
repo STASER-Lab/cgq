@@ -2,7 +2,6 @@ import gleam/bool
 import gleam/dynamic/decode
 import gleam/http
 import gleam/http/request
-import gleam/httpc
 import gleam/int
 import gleam/json
 import gleam/list
@@ -75,8 +74,7 @@ pub fn create_new_quiz(
   let endpoint = "courses/" <> int.to_string(course_id) <> "/quizzes"
 
   use req <- result.try(canvas.request(canvas:, endpoint:))
-
-  use resp <- result.try(
+  let req =
     req
     |> request.set_method(http.Post)
     |> request.set_body(
@@ -85,16 +83,10 @@ pub fn create_new_quiz(
       |> form.add("quiz[only_visible_to_overrides]", form.bool(True))
       |> form.to_string,
     )
-    |> httpc.send
-    |> result.map_error(canvas.FailedToSendRequest),
-  )
 
-  use <- bool.guard(
-    resp.status != 200,
-    resp.status |> canvas.FailedRequestStatus |> Error,
-  )
+  use res <- result.try(canvas.send(canvas:, req:))
 
-  resp.body
+  res
   |> json.parse(using: decoder())
   |> result.map_error(canvas.FailedToParseJson)
 }
@@ -111,8 +103,7 @@ pub fn publish_quiz(
     <> int.to_string(quiz_id)
 
   use req <- result.try(canvas.request(canvas:, endpoint:))
-
-  use resp <- result.try(
+  let req =
     req
     |> request.set_method(http.Put)
     |> request.set_body(
@@ -120,16 +111,10 @@ pub fn publish_quiz(
       |> form.add("quiz[published]", form.bool(True))
       |> form.to_string,
     )
-    |> httpc.send
-    |> result.map_error(canvas.FailedToSendRequest),
-  )
 
-  use <- bool.guard(
-    resp.status != 200,
-    resp.status |> canvas.FailedRequestStatus |> Error,
-  )
+  use _ <- result.map(canvas.send(canvas:, req:))
 
-  Ok(Nil)
+  Nil
 }
 
 pub fn list_quizzes(
@@ -166,19 +151,10 @@ fn loop_list_quizzes(
 
   use req <- result.try(canvas.request(canvas:, endpoint:))
 
-  use resp <- result.try(
-    req
-    |> httpc.send
-    |> result.map_error(canvas.FailedToSendRequest),
-  )
-
-  use <- bool.guard(
-    resp.status != 200,
-    resp.status |> canvas.FailedRequestStatus |> Error,
-  )
+  use res <- result.try(canvas.send(canvas:, req:))
 
   let res =
-    resp.body
+    res
     |> json.parse(using: decode.list(decoder()))
     |> result.map_error(canvas.FailedToParseJson)
 

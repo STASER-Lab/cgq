@@ -1,9 +1,7 @@
-import gleam/bool
 import gleam/dynamic/decode
 import gleam/float
 import gleam/http
 import gleam/http/request
-import gleam/httpc
 import gleam/int
 import gleam/json
 import gleam/option
@@ -132,21 +130,14 @@ pub fn create_new_question(
     <> "/questions"
 
   use req <- result.try(canvas.request(canvas:, endpoint:))
-
-  use resp <- result.try(
+  let req =
     req
     |> request.set_method(http.Post)
     |> request.set_body(question |> encoder() |> form.to_string)
-    |> httpc.send
-    |> result.map_error(canvas.FailedToSendRequest),
-  )
 
-  use <- bool.guard(
-    resp.status != 200,
-    resp.status |> canvas.FailedRequestStatus |> Error,
-  )
+  use _ <- result.map(canvas.send(canvas:, req:))
 
-  Ok(Nil)
+  Nil
 }
 
 pub fn get_single_question(
@@ -165,18 +156,9 @@ pub fn get_single_question(
 
   use req <- result.try(canvas.request(canvas:, endpoint:))
 
-  use resp <- result.try(
-    req
-    |> httpc.send
-    |> result.map_error(canvas.FailedToSendRequest),
-  )
+  use res <- result.try(canvas.send(canvas:, req:))
 
-  use <- bool.guard(
-    resp.status != 200,
-    resp.status |> canvas.FailedRequestStatus |> Error,
-  )
-
-  resp.body
+  res
   |> json.parse(using: decoder())
   |> result.map_error(canvas.FailedToParseJson)
 }

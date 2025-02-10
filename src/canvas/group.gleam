@@ -1,7 +1,7 @@
 import gleam/bool
 import gleam/dynamic/decode
-import gleam/httpc
 import gleam/int
+import gleam/io
 import gleam/json
 import gleam/list
 import gleam/result
@@ -33,6 +33,8 @@ fn loop_list_groups(
   page page: Int,
   groups acc: List(Group),
 ) -> Result(List(Group), canvas.Error) {
+  io.println("Fetching groups from page " <> int.to_string(page) <> "...")
+
   let endpoint =
     "courses/"
     <> int.to_string(course_id)
@@ -41,27 +43,18 @@ fn loop_list_groups(
 
   use req <- result.try(canvas.request(canvas:, endpoint:))
 
-  use res <- result.try(
-    req
-    |> httpc.send
-    |> result.map_error(canvas.FailedToSendRequest),
-  )
-
-  use <- bool.guard(
-    res.status != 200,
-    res.status |> canvas.FailedRequestStatus |> Error,
-  )
+  use res <- result.try(canvas.send(canvas:, req:))
 
   let res =
-    res.body
+    res
     |> json.parse(using: decode.list(decoder()))
     |> result.map_error(canvas.FailedToParseJson)
 
   use groups <- result.try(res)
-  let groups = list.append(acc, groups)
 
   use <- bool.guard(groups |> list.is_empty, acc |> Ok)
 
+  let groups = list.append(acc, groups)
   loop_list_groups(canvas:, course_id:, page: page + 1, groups:)
 }
 
@@ -73,18 +66,9 @@ pub fn get_group(
 
   use req <- result.try(canvas.request(canvas:, endpoint:))
 
-  use res <- result.try(
-    req
-    |> httpc.send
-    |> result.map_error(canvas.FailedToSendRequest),
-  )
+  use res <- result.try(canvas.send(canvas:, req:))
 
-  use <- bool.guard(
-    res.status != 200,
-    res.status |> canvas.FailedRequestStatus |> Error,
-  )
-
-  res.body
+  res
   |> json.parse(using: decoder())
   |> result.map_error(canvas.FailedToParseJson)
 }
@@ -94,18 +78,9 @@ pub fn list_group_users(canvas canvas: canvas.Canvas, group_id group_id: Int) {
 
   use req <- result.try(canvas.request(canvas:, endpoint:))
 
-  use res <- result.try(
-    req
-    |> httpc.send
-    |> result.map_error(canvas.FailedToSendRequest),
-  )
+  use res <- result.try(canvas.send(canvas:, req:))
 
-  use <- bool.guard(
-    res.status != 200,
-    res.status |> canvas.FailedRequestStatus |> Error,
-  )
-
-  res.body
+  res
   |> json.parse(using: decode.list(user.decoder()))
   |> result.map_error(canvas.FailedToParseJson)
 }

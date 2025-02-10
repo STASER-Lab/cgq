@@ -2,6 +2,7 @@ import gleam/int
 import gleam/io
 import gleam/list
 import gleam/option
+import gleam/otp/task
 import gleam/result
 
 import birl
@@ -21,6 +22,7 @@ pub type Error {
   FailedToCreateAssignmentOverride(canvas.Error)
   FailedToPublish(canvas.Error)
   FailedToCreateQuestion(canvas.Error)
+  FailedTask(task.AwaitError)
 }
 
 pub fn create_per_group(
@@ -31,6 +33,8 @@ pub fn create_per_group(
   unlock_at unlock_at: option.Option(birl.Time),
   published published: option.Option(Bool),
 ) -> Result(Nil, Error) {
+  io.println("Creating quizzes for each group...")
+
   use groups <- result.try(
     group.list_groups(canvas, course_id:)
     |> result.map_error(FailedToGetGroups),
@@ -38,18 +42,23 @@ pub fn create_per_group(
 
   {
     use group <- list.map(groups)
-
-    create(
-      canvas:,
-      course_id:,
-      params:,
-      due_at:,
-      unlock_at:,
-      group:,
-      published:,
-    )
+    task.async(fn() {
+      create(
+        canvas:,
+        course_id:,
+        params:,
+        due_at:,
+        unlock_at:,
+        group:,
+        published:,
+      )
+    })
   }
+  |> task.try_await_all(100_000)
   |> result.all
+  |> result.map_error(FailedTask)
+  |> result.map(result.all)
+  |> result.flatten
   |> result.replace(Nil)
 }
 

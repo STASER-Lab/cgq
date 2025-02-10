@@ -1,8 +1,6 @@
-import gleam/bool
 import gleam/dynamic/decode
 import gleam/http
 import gleam/http/request
-import gleam/httpc
 import gleam/int
 import gleam/json
 import gleam/option
@@ -83,20 +81,14 @@ pub fn create_assignment_override(
 
   use req <- result.try(canvas.request(canvas:, endpoint:))
 
-  use res <- result.try(
+  let req =
     req
     |> request.set_method(http.Post)
     |> request.set_body(assignment_override |> encoder |> form.to_string)
-    |> httpc.send
-    |> result.map_error(canvas.FailedToSendRequest),
-  )
 
-  use <- bool.guard(
-    res.status != 201,
-    res.status |> canvas.FailedRequestStatus |> Error,
-  )
+  use res <- result.try(canvas.send(canvas:, req:))
 
-  res.body
+  res
   |> json.parse(using: decoder())
   |> result.map_error(canvas.FailedToParseJson)
 }

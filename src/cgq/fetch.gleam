@@ -1,5 +1,4 @@
 import gleam/bool
-import gleam/erlang/process
 import gleam/io
 import gleam/list
 import gleam/otp/task
@@ -82,9 +81,7 @@ pub fn fetch(
         let QuestionAnswerPair(question: _, answer:) = pair
         let submissions.Answer(question_id: _, text:) = answer
 
-        text
-        |> string.drop_start(string.length("<p>"))
-        |> string.drop_end(string.length("</p>"))
+        text |> sanitize
       }
       |> string.join("\n")
       |> string.append("\n")
@@ -127,17 +124,12 @@ fn submissions(
         user.get_user(canvas:, course_id:, user_id:)
         |> result.map_error(FailedToFetchUser),
       )
-      // TODO: backoff
-      process.sleep(100)
 
       let pairs =
         {
           let pairs_tasks = {
             use answer <- list.map(answers)
             let submissions.Answer(question_id:, text: _) = answer
-
-            // TODO: backoff
-            process.sleep(200)
 
             task.async(fn() {
               question.get_single_question(
@@ -198,4 +190,10 @@ fn filter_answers(answer answer: submissions.Answer) -> Bool {
     |> string.trim
 
   text != "NA" && text != "N/A" && text != "NONE"
+}
+
+fn sanitize(text text: String) -> String {
+  text
+  |> string.drop_start(string.length("<p>"))
+  |> string.drop_end(string.length("</p>"))
 }

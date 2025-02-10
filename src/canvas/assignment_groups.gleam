@@ -1,6 +1,4 @@
-import gleam/bool
 import gleam/dynamic/decode
-import gleam/httpc
 import gleam/int
 import gleam/json
 import gleam/result
@@ -25,18 +23,9 @@ pub fn list_assignment_groups(
 
   use req <- result.try(canvas.request(canvas:, endpoint:))
 
-  use res <- result.try(
-    req
-    |> httpc.send
-    |> result.map_error(canvas.FailedToSendRequest),
-  )
+  use res <- result.try(canvas.send(canvas:, req:))
 
-  use <- bool.guard(
-    res.status != 200,
-    res.status |> canvas.FailedRequestStatus |> Error,
-  )
-
-  res.body
+  res
   |> json.parse(using: decode.list(decoder()))
   |> result.map_error(canvas.FailedToParseJson)
 }
