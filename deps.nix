@@ -36,7 +36,7 @@ stdenv.mkDerivation {
   outputHashMode = "recursive";
   outputHashAlgo = "sha256";
 
-  outputHash = "sha256-sZ4b6W+G9/YOLnhDTsSFoPJjeiDw/qDsZTVX5Ufb2tc=";
+  outputHash = "sha256-oBQUyKU84s6Oh/4XUQlC4Ah8qOWo3b+PF0BuA2yL/9o=";
 
   buildPhase = ''
     export HOME=$(mktemp -d)

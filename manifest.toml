@@ -16,7 +16,7 @@ packages = [
   { name = "gleam_yielder", version = "1.1.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_yielder", source = "hex", outer_checksum = "8E4E4ECFA7982859F430C57F549200C7749823C106759F4A19A78AEA6687717A" },
   { name = "gleeunit", version = "1.3.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleeunit", source = "hex", outer_checksum = "0E6C83834BA65EDCAAF4FE4FB94AC697D9262D83E6F58A750D63C9F6C8A9D9FF" },
   { name = "ranger", version = "1.4.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "gleam_yielder"], otp_app = "ranger", source = "hex", outer_checksum = "C8988E8F8CDBD3E7F4D8F2E663EF76490390899C2B2885A6432E942495B3E854" },
-  { name = "trellis", version = "2.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "trellis", source = "hex", outer_checksum = "CA9B497F2F3A96BC972E950DF1356FFBA2C341E0B677C2B1998F44CAAC5DBD9C" },
+  { name = "trellis", version = "2.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "trellis", source = "hex", outer_checksum = "37F51C0CAB0F5664B3A38A08F2D11C12C2A000BB513C4802F3647A08D79B5B77" },
 ]
 
 [requirements]

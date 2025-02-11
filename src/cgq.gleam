@@ -1,3 +1,4 @@
+import gleam/function
 import gleam/io
 import gleam/option
 import gleam/result
@@ -88,17 +89,17 @@ pub fn main() -> Result(Nil, Error) {
         |> result.map_error(FailedToFetch)
     }
   }
-  |> result.map_error({
-    use err <- form.parameter
-    case err {
-      FailedToGetArgs(str) -> str
-      _ -> err |> string.inspect
-    }
-    |> {
+  |> result.map_error(
+    function.tap(_, {
       use err <- form.parameter
-      "Failed with error of " <> err <> ".  Please use -h to see the help menu."
-    }
-    |> io.println_error
-    err
-  })
+      case err {
+        FailedToGetArgs(str) -> str
+        _ ->
+          "Failed with error of "
+          <> err |> string.inspect
+          <> ".  Please use -h to see the help menu."
+      }
+      |> io.println_error
+    }),
+  )
 }

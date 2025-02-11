@@ -58,7 +58,7 @@ fn do_make_request(
   let assert Ok(value) = int.power(2, int.to_float(attempt))
   let delay = float.round(value) * base_delay
 
-  let f = fn() {
+  let res = {
     use resp <- result.try(
       request
       |> request.set_method(http.Get)
@@ -76,7 +76,7 @@ fn do_make_request(
     resp.body |> Ok
   }
 
-  case f(), attempt > max_attempts {
+  case res, attempt > max_attempts {
     Ok(value), _ -> Ok(value)
     _, True -> Error(MaxRetriesExceeded)
     Error(_), False -> {
