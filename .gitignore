@@ -16,10 +16,3 @@
 !src/canvas/*.gleam
 !src/cgq/
 !src/cgq/*.gleam
-
-# release building
-!lib/
-!lib/cgq.ex
-!mix.exs
-!mix.lock
-!deps.nix
