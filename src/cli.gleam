@@ -27,14 +27,18 @@ pub type Args {
     points_possible: option.Option(Int),
   )
   List(List)
-  Fetch(course_id: Int, quiz_title: String)
-  Write(course_id: Int, filepath: String)
+  Fetch(Fetch)
 }
 
 pub type List {
   Courses(enrollment_type: courses.EnrollmentType)
   Groups(course_id: Int)
   AssignmentGroups(course_id: Int)
+}
+
+pub type Fetch {
+  Feedback(course_id: Int, quiz_title: String)
+  Evaluations(course_id: Int, filepath: String)
 }
 
 const cli_name = "cgq"
@@ -44,7 +48,6 @@ pub fn cli() -> Result(Args, String) {
     #("create", create()),
     #("list", list()),
     #("fetch", fetch()),
-    #("write", write()),
   ])
   |> clip.help(help.simple(
     cli_name,
@@ -244,10 +247,18 @@ pub fn list() -> clip.Command(Args) {
 }
 
 fn fetch() -> clip.Command(Args) {
+  clip.subcommands([#("feedback", feedback()), #("evals", evals())])
+  |> clip.help(help.simple(
+    cli_name <> " fetch",
+    "Fetch either the textual feedback or the peer evaluations.",
+  ))
+}
+
+fn feedback() -> clip.Command(Args) {
   clip.command({
     use course_id <- clip.parameter
     use quiz_title <- clip.parameter
-    Fetch(course_id:, quiz_title:)
+    Feedback(course_id:, quiz_title:) |> Fetch
   })
   |> clip.arg(
     arg.new("course_id")
@@ -261,11 +272,11 @@ fn fetch() -> clip.Command(Args) {
   |> clip.help(help.simple(cli_name <> " fetch", "Fetch quiz results."))
 }
 
-fn write() -> clip.Command(Args) {
+fn evals() -> clip.Command(Args) {
   clip.command({
     use course_id <- clip.parameter
     use filepath <- clip.parameter
-    Write(course_id:, filepath:)
+    Evaluations(course_id:, filepath:) |> Fetch
   })
   |> clip.arg(
     arg.new("course_id")

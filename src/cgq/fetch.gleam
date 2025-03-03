@@ -240,12 +240,14 @@ fn fetch_submissions(
 
     let q_and_a = list.zip(questions, answers)
 
-    io.println("Fetched submissions for " <> quiz_title <> ".")
-
     QuizSubmission(user:, quiz:, q_and_a:)
   }
 
   io.println("Fetching quiz submissions for " <> quiz_title <> "...")
+
+  use <- defer(fn() {
+    io.println("Fetched submissions for " <> quiz_title <> ".")
+  })
 
   task.try_await_all(quizzes_tasks, 10_000_000)
   |> result.all
@@ -351,4 +353,10 @@ fn create_points_distribution(
   use maybe_point <- dict.upsert(points_distribution, key)
 
   option.unwrap(maybe_point, 0) + point
+}
+
+fn defer(defer: fn() -> b, continue: fn() -> a) -> a {
+  let retval = continue()
+  defer()
+  retval
 }
