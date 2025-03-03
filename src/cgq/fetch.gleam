@@ -129,7 +129,7 @@ pub fn fetch_student_ratings(
   course_id course_id: Int,
   filepath filepath: String,
 ) {
-  let weeks = list.range(3, 6)
+  let weeks = list.range(from: 3, to: 6)
 
   let tasks = {
     use week <- list.map(weeks)
@@ -138,7 +138,7 @@ pub fn fetch_student_ratings(
 
     let quiz_title = "Week " <> int.to_string(week)
 
-    use submissions <- result.map(fetch_submissions(
+    use submissions <- result.map(over: fetch_submissions(
       canvas:,
       course_id:,
       quiz_title:,
@@ -148,43 +148,36 @@ pub fn fetch_student_ratings(
 
     let points = create_points_distribution(student_names:)
 
-    {
-      use #(_, _, name, group_name) <- list.map(student_names)
+    use _, point <- dict.map_values(in: points)
 
-      let assert Ok(point) = dict.get(points, #(group_name, name))
+    let point = point |> int.to_string
 
-      #(group_name, name, quiz_title, point)
-    }
+    [#(quiz_title, point)]
   }
 
   io.println("Fetching student peer evaluations...")
 
-  let student_names_by_week =
+  let weekly_evaluations =
     task.try_await_all(tasks, 1_000_000)
     |> result.all
     |> result.replace_error(FailedAsync)
     |> result.map(result.all)
     |> result.flatten
-    |> result.map(list.flatten)
 
-  use student_names_by_week <- result.try(student_names_by_week)
+  use weekly_evaluations <- result.try(weekly_evaluations)
 
-  let student_names_to_rows = {
-    use acc, #(group_name, name, quiz_title, point) <- list.fold(
-      over: student_names_by_week,
-      from: dict.new(),
-    )
+  let weekly_evaluation = {
+    use acc, points <- list.fold(over: weekly_evaluations, from: dict.new())
 
-    use maybe <- dict.upsert(in: acc, update: #(group_name, name))
+    use acc, key, value <- dict.fold(points, acc)
 
-    option.unwrap(maybe, [])
-    |> list.prepend(#(quiz_title, int.to_string(point)))
+    use maybe <- dict.upsert(in: acc, update: key)
+
+    option.unwrap(maybe, []) |> list.append(value)
   }
 
   {
-    use #(#(group_name, name), row) <- list.map(dict.to_list(
-      student_names_to_rows,
-    ))
+    use #(#(group_name, name), row) <- list.map(dict.to_list(weekly_evaluation))
 
     row
     |> list.prepend(#("Group Name", group_name))
@@ -246,6 +239,8 @@ fn fetch_submissions(
     ))
 
     let q_and_a = list.zip(questions, answers)
+
+    io.println("Fetched submissions for " <> quiz_title <> ".")
 
     QuizSubmission(user:, quiz:, q_and_a:)
   }
