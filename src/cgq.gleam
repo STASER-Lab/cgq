@@ -49,9 +49,16 @@ pub fn main() -> Result(Nil, Error) {
         due_at:,
         unlock_at:,
         published:,
+        points_possible:,
       ) -> {
         let params =
-          quiz.Create(title:, description:, quiz_type:, assignment_group_id:)
+          quiz.Create(
+            title:,
+            description:,
+            quiz_type:,
+            assignment_group_id:,
+            points_possible:,
+          )
         case group_id {
           option.Some(group_id) ->
             cgq_create.create_for_group(
@@ -86,6 +93,9 @@ pub fn main() -> Result(Nil, Error) {
         |> result.map_error(FailedToList)
       cli.Fetch(course_id:, quiz_title:) ->
         cgq_fetch.fetch(canvas:, course_id:, quiz_title:)
+        |> result.map_error(FailedToFetch)
+      cli.Write(course_id:, filepath:) ->
+        cgq_fetch.fetch_student_ratings(canvas:, course_id:, filepath:)
         |> result.map_error(FailedToFetch)
     }
   }

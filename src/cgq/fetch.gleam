@@ -1,10 +1,16 @@
 import gleam/bool
+import gleam/dict
+import gleam/float
+import gleam/int
 import gleam/io
 import gleam/list
+import gleam/option
 import gleam/otp/task
 import gleam/result
 import gleam/string
 
+import gsv
+import simplifile
 import trellis
 import trellis/column
 
@@ -20,19 +26,15 @@ pub type Error {
   FailedToFetchUser(canvas.Error)
   FailedToFetchQuestions(canvas.Error)
   FailedAsync
-  NotEssay
+  FailedToWriteToFile(simplifile.FileError)
 }
 
-type QuizSubmissions {
-  QuizSubmissions(
+type QuizSubmission {
+  QuizSubmission(
     user: user.User,
     quiz: quiz.Quiz,
-    pairs: List(QuestionAnswerPair),
+    q_and_a: List(#(question.Question, submissions.Answer)),
   )
-}
-
-type QuestionAnswerPair {
-  QuestionAnswerPair(question: question.Question, answer: submissions.Answer)
 }
 
 pub fn fetch(
@@ -40,15 +42,25 @@ pub fn fetch(
   course_id course_id: Int,
   quiz_title quiz_title: String,
 ) -> Result(Nil, Error) {
-  use submissions <- result.map(submissions(canvas:, course_id:, quiz_title:))
+  use submissions <- result.map(fetch_submissions(
+    canvas:,
+    course_id:,
+    quiz_title:,
+  ))
 
   let submissions =
-    list.filter(submissions, fn(submission) {
-      let QuizSubmissions(user: _, quiz: _, pairs:) = submission
+    submissions
+    |> list.filter_map(fn(submission) {
+      let QuizSubmission(user: _, quiz: _, q_and_a:) = submission
 
-      use <- bool.guard(when: pairs == [], return: False)
+      use <- bool.guard(list.is_empty(q_and_a), Error(Nil))
 
-      True
+      let q_and_a = {
+        use #(_, answer) <- list.filter(q_and_a)
+        filter_answers(answer)
+      }
+
+      QuizSubmission(..submission, q_and_a:) |> Ok
     })
 
   trellis.table(submissions)
@@ -56,7 +68,7 @@ pub fn fetch(
     column.new(header: "Student Name")
     |> column.align(column.Left)
     |> column.render({
-      use QuizSubmissions(user:, quiz: _, pairs: _) <- trellis.param
+      use QuizSubmission(user:, quiz: _, q_and_a: _) <- trellis.param
       let user.User(id: _, name:) = user
       name
     }),
@@ -65,7 +77,7 @@ pub fn fetch(
     column.new(header: "Quiz Title")
     |> column.align(column.Left)
     |> column.render({
-      use QuizSubmissions(user: _, quiz:, pairs: _) <- trellis.param
+      use QuizSubmission(user: _, quiz:, q_and_a: _) <- trellis.param
       let quiz.Quiz(id: _, assignment_id: _, title:) = quiz
       title
     }),
@@ -74,11 +86,10 @@ pub fn fetch(
     column.new(header: "Complaint")
     |> column.align(column.Left)
     |> column.render({
-      use QuizSubmissions(user: _, quiz: _, pairs:) <- trellis.param
+      use QuizSubmission(user: _, quiz: _, q_and_a:) <- trellis.param
 
       {
-        use pair <- list.map(pairs)
-        let QuestionAnswerPair(question: _, answer:) = pair
+        use #(_, answer) <- list.map(q_and_a)
         let submissions.Answer(question_id: _, text:) = answer
 
         text |> sanitize
@@ -86,95 +97,10 @@ pub fn fetch(
       |> string.join("\n")
       |> string.append("\n")
     })
-    |> column.wrap(80),
+    |> column.wrap(40),
   )
   |> trellis.to_string
   |> io.println
-}
-
-fn submissions(
-  canvas canvas: canvas.Canvas,
-  course_id course_id: Int,
-  quiz_title quiz_title: String,
-) -> Result(List(QuizSubmissions), Error) {
-  use quizzes <- result.try(
-    quiz.list_quizzes(canvas:, course_id:, search_term: quiz_title)
-    |> result.map_error(FailedToListQuizzes),
-  )
-
-  let quizzes_tasks = {
-    use quiz <- list.map(quizzes)
-    let quiz.Quiz(id: quiz_id, assignment_id:, title: _) = quiz
-
-    task.async(fn() {
-      use submissions <- result.map(
-        submissions.list_assignment_submissions(
-          canvas:,
-          course_id:,
-          assignment_id:,
-        )
-        |> result.map_error(FailedToListSubmissions),
-      )
-
-      use submission <- list.map(submissions)
-      let submissions.Submission(id: _, user_id:, answers:) = submission
-      let answers = answers |> list.filter(filter_answers)
-
-      use user <- result.try(
-        user.get_user(canvas:, course_id:, user_id:)
-        |> result.map_error(FailedToFetchUser),
-      )
-
-      let pairs =
-        {
-          let pairs_tasks = {
-            use answer <- list.map(answers)
-            let submissions.Answer(question_id:, text: _) = answer
-
-            task.async(fn() {
-              question.get_single_question(
-                canvas:,
-                course_id:,
-                quiz_id:,
-                question_id:,
-              )
-              |> result.map(QuestionAnswerPair(question: _, answer:))
-              |> result.map_error(FailedToFetchQuestions)
-            })
-          }
-
-          use res <- list.map(task.try_await_all(pairs_tasks, 1_000_000))
-          res
-          |> result.replace_error(FailedAsync)
-          |> result.flatten
-        }
-        |> result.all
-
-      use pairs <- result.map(pairs)
-
-      let pairs =
-        pairs
-        |> list.filter(fn(r) {
-          case r.question {
-            question.Essay(_, _) -> True
-            _ -> False
-          }
-        })
-
-      QuizSubmissions(user:, quiz:, pairs:)
-    })
-  }
-
-  io.println("Fetching...")
-
-  task.try_await_all(quizzes_tasks, 10_000_000)
-  |> result.all
-  |> result.map(result.all)
-  |> result.replace_error(FailedAsync)
-  |> result.flatten
-  |> result.map(list.flatten)
-  |> result.map(result.all)
-  |> result.flatten
 }
 
 fn filter_answers(answer answer: submissions.Answer) -> Bool {
@@ -196,4 +122,238 @@ fn sanitize(text text: String) -> String {
   text
   |> string.drop_start(string.length("<p>"))
   |> string.drop_end(string.length("</p>"))
+}
+
+pub fn fetch_student_ratings(
+  canvas canvas: canvas.Canvas,
+  course_id course_id: Int,
+  filepath filepath: String,
+) {
+  let weeks = list.range(3, 6)
+
+  let tasks = {
+    use week <- list.map(weeks)
+
+    use <- task.async
+
+    let quiz_title = "Week " <> int.to_string(week)
+
+    use submissions <- result.map(fetch_submissions(
+      canvas:,
+      course_id:,
+      quiz_title:,
+    ))
+
+    let student_names = append_student_names(submissions:)
+
+    let points = create_points_distribution(student_names:)
+
+    {
+      use #(_, _, name, group_name) <- list.map(student_names)
+
+      let assert Ok(point) = dict.get(points, #(group_name, name))
+
+      #(group_name, name, quiz_title, point)
+    }
+  }
+
+  io.println("Fetching student peer evaluations...")
+
+  let student_names_by_week =
+    task.try_await_all(tasks, 1_000_000)
+    |> result.all
+    |> result.replace_error(FailedAsync)
+    |> result.map(result.all)
+    |> result.flatten
+    |> result.map(list.flatten)
+
+  use student_names_by_week <- result.try(student_names_by_week)
+
+  let student_names_to_rows = {
+    use acc, #(group_name, name, quiz_title, point) <- list.fold(
+      over: student_names_by_week,
+      from: dict.new(),
+    )
+
+    use maybe <- dict.upsert(in: acc, update: #(group_name, name))
+
+    option.unwrap(maybe, [])
+    |> list.prepend(#(quiz_title, int.to_string(point)))
+  }
+
+  {
+    use #(#(group_name, name), row) <- list.map(dict.to_list(
+      student_names_to_rows,
+    ))
+
+    row
+    |> list.prepend(#("Group Name", group_name))
+    |> list.prepend(#("Name", name))
+    |> dict.from_list
+  }
+  |> list.sort(fn(a, b) {
+    let assert Ok(group_name_a) = dict.get(a, "Group Name")
+    let assert Ok(group_name_b) = dict.get(b, "Group Name")
+
+    string.compare(group_name_a, group_name_b)
+  })
+  |> gsv.from_dicts(",", gsv.Unix)
+  |> simplifile.write(to: filepath)
+  |> result.map_error(FailedToWriteToFile)
+}
+
+fn fetch_submissions(
+  canvas canvas: canvas.Canvas,
+  course_id course_id: Int,
+  quiz_title quiz_title: String,
+) -> Result(List(QuizSubmission), Error) {
+  io.println("Fetching quizzes for " <> quiz_title <> "...")
+
+  use quizzes <- result.try(
+    quiz.list_quizzes(canvas:, course_id:, search_term: quiz_title)
+    |> result.map_error(FailedToListQuizzes),
+  )
+
+  let quizzes_tasks = {
+    use quiz <- list.map(quizzes)
+    let quiz.Quiz(id: quiz_id, assignment_id:, title: _) = quiz
+
+    use <- task.async
+
+    use submissions <- result.map(
+      submissions.list_assignment_submissions(
+        canvas:,
+        course_id:,
+        assignment_id:,
+      )
+      |> result.map_error(FailedToListSubmissions),
+    )
+
+    use submissions.Submission(id: _, user_id:, answers:) <- list.map(
+      submissions,
+    )
+
+    use user <- result.try(
+      user.get_user(canvas:, course_id:, user_id:)
+      |> result.map_error(FailedToFetchUser),
+    )
+
+    use questions <- result.map(fetch_questions(
+      canvas:,
+      course_id:,
+      quiz_id:,
+      answers:,
+    ))
+
+    let q_and_a = list.zip(questions, answers)
+
+    QuizSubmission(user:, quiz:, q_and_a:)
+  }
+
+  io.println("Fetching quiz submissions for " <> quiz_title <> "...")
+
+  task.try_await_all(quizzes_tasks, 10_000_000)
+  |> result.all
+  |> result.map(result.all)
+  |> result.replace_error(FailedAsync)
+  |> result.flatten
+  |> result.map(list.flatten)
+  |> result.map(result.all)
+  |> result.flatten
+}
+
+fn fetch_questions(
+  canvas canvas: canvas.Canvas,
+  course_id course_id: Int,
+  quiz_id quiz_id: Int,
+  answers answers: List(submissions.Answer),
+) -> Result(List(question.Question), Error) {
+  let tasks = {
+    use submissions.Answer(question_id:, text: _) <- list.map(answers)
+
+    use <- task.async
+
+    question.get_single_question(canvas:, course_id:, quiz_id:, question_id:)
+    |> result.map_error(FailedToFetchQuestions)
+  }
+
+  task.try_await_all(tasks, 1_000_000)
+  |> result.all
+  |> result.replace_error(FailedAsync)
+  |> result.map(result.all)
+  |> result.flatten
+}
+
+fn append_student_names(
+  submissions submissions: List(QuizSubmission),
+) -> List(#(question.Question, submissions.Answer, String, String)) {
+  use <- bool.guard(list.is_empty(submissions), [])
+
+  use acc, QuizSubmission(user: _, quiz:, q_and_a:) <- list.fold(
+    submissions,
+    [],
+  )
+
+  let student_names = {
+    use #(question, answer) <- list.filter_map(q_and_a)
+
+    use <- bool.guard(
+      !case question {
+        question.Numerical(text:, points: _) ->
+          text
+          |> string.lowercase
+          |> string.contains("the points distributed for ")
+        _ -> False
+      },
+      Error(Nil),
+    )
+
+    let assert question.Numerical(text:, points: _) = question
+
+    let prefix = "The points distributed for " |> string.lowercase
+
+    use <- bool.guard(
+      !string.starts_with(string.lowercase(text), prefix),
+      Error(Nil),
+    )
+
+    let name =
+      text
+      |> string.drop_start(string.length(prefix))
+
+    use <- bool.guard(string.is_empty(name), Error(Nil))
+
+    let group_name = quiz.title |> string.drop_start(string.length("Week 4: "))
+
+    #(question, answer, name, group_name) |> Ok
+  }
+
+  list.append(acc, student_names)
+}
+
+fn create_points_distribution(
+  student_names student_names: List(
+    #(question.Question, submissions.Answer, String, String),
+  ),
+) -> dict.Dict(#(String, String), Int) {
+  use points_distribution, #(_, answer, name, group_name) <- list.fold(
+    student_names,
+    dict.new(),
+  )
+
+  let key = #(group_name, name)
+
+  let submissions.Answer(question_id: _, text:) = answer
+
+  let text = text |> string.trim
+
+  let point =
+    result.or(int.parse(text), float.parse(text) |> result.map(float.round))
+
+  use <- bool.guard(result.is_error(point), points_distribution)
+  let assert Ok(point) = point
+
+  use maybe_point <- dict.upsert(points_distribution, key)
+
+  option.unwrap(maybe_point, 0) + point
 }

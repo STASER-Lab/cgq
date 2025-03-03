@@ -23,10 +23,12 @@ pub type Args {
     assignment_group_id: option.Option(Int),
     due_at: option.Option(birl.Time),
     unlock_at: option.Option(birl.Time),
-    published: option.Option(Bool),
+    published: Bool,
+    points_possible: option.Option(Int),
   )
   List(List)
   Fetch(course_id: Int, quiz_title: String)
+  Write(course_id: Int, filepath: String)
 }
 
 pub type List {
@@ -42,6 +44,7 @@ pub fn cli() -> Result(Args, String) {
     #("create", create()),
     #("list", list()),
     #("fetch", fetch()),
+    #("write", write()),
   ])
   |> clip.help(help.simple(
     cli_name,
@@ -61,6 +64,7 @@ pub fn create() -> clip.Command(Args) {
     use due_at <- clip.parameter
     use unlock_at <- clip.parameter
     use published <- clip.parameter
+    use points_possible <- clip.parameter
 
     Create(
       course_id:,
@@ -72,6 +76,7 @@ pub fn create() -> clip.Command(Args) {
       due_at:,
       unlock_at:,
       published:,
+      points_possible:,
     )
   })
   |> clip.arg(
@@ -156,11 +161,18 @@ pub fn create() -> clip.Command(Args) {
     |> opt.try_map({
       use opt <- clip.parameter
       case opt |> string.lowercase {
-        "true" | "t" -> True |> option.Some |> Ok
-        "false" | "f" -> False |> option.Some |> Ok
+        "true" | "t" -> True |> Ok
+        "false" | "f" -> False |> Ok
         _ -> Error("Unable to parse published.")
       }
     })
+    |> opt.default(False),
+  )
+  |> clip.opt(
+    opt.new("points_possible")
+    |> opt.help("The total point value given to the quiz.")
+    |> opt.int
+    |> opt.map(option.Some)
     |> opt.default(option.None),
   )
   |> clip.help(help.simple(
@@ -247,4 +259,26 @@ fn fetch() -> clip.Command(Args) {
     |> arg.help("The title used for creating the quiz."),
   )
   |> clip.help(help.simple(cli_name <> " fetch", "Fetch quiz results."))
+}
+
+fn write() -> clip.Command(Args) {
+  clip.command({
+    use course_id <- clip.parameter
+    use filepath <- clip.parameter
+    Write(course_id:, filepath:)
+  })
+  |> clip.arg(
+    arg.new("course_id")
+    |> arg.help("The unique identifier for the course.")
+    |> arg.int,
+  )
+  |> clip.arg(
+    arg.new("filepath")
+    |> arg.default("./results.csv")
+    |> arg.help("The filepath to save the results too."),
+  )
+  |> clip.help(help.simple(
+    cli_name <> " write",
+    "Write peer review evals to file",
+  ))
 }

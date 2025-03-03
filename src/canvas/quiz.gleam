@@ -23,6 +23,7 @@ pub type QuizParams {
     description: option.Option(String),
     quiz_type: option.Option(QuizType),
     assignment_group_id: option.Option(Int),
+    points_possible: option.Option(Int),
   )
 }
 
@@ -34,7 +35,13 @@ pub type QuizType {
 }
 
 fn encoder(params params: QuizParams) -> form.Form {
-  let Create(title:, description:, quiz_type:, assignment_group_id:) = params
+  let Create(
+    title:,
+    description:,
+    quiz_type:,
+    assignment_group_id:,
+    points_possible:,
+  ) = params
 
   form.new()
   |> form.add("quiz[title]", form.optional(title, form.string))
@@ -57,6 +64,7 @@ fn encoder(params params: QuizParams) -> form.Form {
     "quiz[assignment_group_id]",
     form.optional(assignment_group_id, form.int),
   )
+  |> form.add("quiz[points_possible]", form.optional(points_possible, form.int))
 }
 
 fn decoder() -> decode.Decoder(Quiz) {
@@ -112,9 +120,7 @@ pub fn publish_quiz(
       |> form.to_string,
     )
 
-  use _ <- result.map(canvas.send(canvas:, req:))
-
-  Nil
+  canvas.send(canvas:, req:) |> result.replace(Nil)
 }
 
 pub fn list_quizzes(

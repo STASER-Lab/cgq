@@ -1,3 +1,4 @@
+import gleam/bool
 import gleam/int
 import gleam/io
 import gleam/list
@@ -31,7 +32,7 @@ pub fn create_per_group(
   params params: quiz.QuizParams,
   due_at due_at: option.Option(birl.Time),
   unlock_at unlock_at: option.Option(birl.Time),
-  published published: option.Option(Bool),
+  published published: Bool,
 ) -> Result(Nil, Error) {
   io.println("Creating quizzes for each group...")
 
@@ -69,7 +70,7 @@ pub fn create_for_group(
   params params: quiz.QuizParams,
   due_at due_at: option.Option(birl.Time),
   unlock_at unlock_at: option.Option(birl.Time),
-  published published: option.Option(Bool),
+  published published: Bool,
 ) {
   use group <- result.try(
     group.get_group(canvas:, group_id:)
@@ -86,7 +87,7 @@ fn create(
   due_at due_at: option.Option(birl.Time),
   unlock_at unlock_at: option.Option(birl.Time),
   group group: group.Group,
-  published published: option.Option(Bool),
+  published published: Bool,
 ) {
   let group_name = group.name
 
@@ -156,19 +157,16 @@ fn create(
 
   io.print("Quiz assigned.")
 
-  case published {
-    option.Some(_) -> {
-      io.println("  Publishing...")
+  use <- bool.guard(when: !published, return: Ok(Nil))
 
-      use _ <- result.map(
-        quiz.publish_quiz(canvas:, course_id:, quiz_id:)
-        |> result.map_error(FailedToPublish),
-      )
+  io.println("  Publishing...")
 
-      io.println("Published.")
-    }
-    option.None -> Ok(Nil)
-  }
+  use _ <- result.map(
+    quiz.publish_quiz(canvas:, course_id:, quiz_id:)
+    |> result.map_error(FailedToPublish),
+  )
+
+  io.println("Published.")
 }
 
 fn create_question(

@@ -86,16 +86,6 @@ You can create a quiz using the following command:
 > You can see the code in [cgq.gleam](./src/cgq.gleam).
 
 ```sh
-gleam run -- create 155027 \
-    --title "Week 6" \
-    --description "Weekly evaluations." \
-    --quiz_type "graded_survey" \
-    --assignment_group_id "538476" \
-    --due_at "2025-02-14 23:59.999-8:00" \
-    --unlock_at "2025-02-7 23:59.999-8:00" \
-    --published "True"
-
-
 gleam run -- create <course_id> \
     --title "Week 5" \
     --description "Weekly evaluations." \

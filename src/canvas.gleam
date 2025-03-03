@@ -1,7 +1,6 @@
 import gleam/bool
 import gleam/erlang/process
 import gleam/float
-import gleam/http
 import gleam/http/request
 import gleam/httpc
 import gleam/int
@@ -61,7 +60,6 @@ fn do_make_request(
   let res = {
     use resp <- result.try(
       request
-      |> request.set_method(http.Get)
       |> httpc.send
       |> result.map_error(FailedToSendRequest),
     )

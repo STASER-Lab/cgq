@@ -17,6 +17,8 @@ birl = ">= 1.8.0 and < 2.0.0"
 clip = ">= 1.0.0 and < 2.0.0"
 envoy = ">= 1.0.2 and < 2.0.0"
 trellis = ">= 2.0.0 and < 3.0.0"
+simplifile = ">= 2.2.0 and < 3.0.0"
+gsv = ">= 3.0.2 and < 4.0.0"
 
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
