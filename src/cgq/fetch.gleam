@@ -1,6 +1,7 @@
 import gleam/bool
 import gleam/dict
 import gleam/float
+import gleam/function
 import gleam/int
 import gleam/io
 import gleam/list
@@ -166,24 +167,21 @@ pub fn fetch_student_ratings(
 
   use weekly_evaluations <- result.try(weekly_evaluations)
 
-  let weekly_evaluation = {
-    use acc, points <- list.fold(over: weekly_evaluations, from: dict.new())
+  let weekly_evaluations = {
+    use one, other <- list.fold(weekly_evaluations, dict.new())
 
-    use acc, key, value <- dict.fold(points, acc)
-
-    use maybe <- dict.upsert(in: acc, update: key)
-
-    option.unwrap(maybe, []) |> list.append(value)
+    dict.combine(one, other, list.append)
   }
 
   {
-    use #(#(group_name, name), row) <- list.map(dict.to_list(weekly_evaluation))
+    use #(group_name, name), row <- dict.map_values(weekly_evaluations)
 
     row
     |> list.prepend(#("Group Name", group_name))
     |> list.prepend(#("Name", name))
     |> dict.from_list
   }
+  |> dict.values
   |> list.sort(fn(a, b) {
     let assert Ok(group_name_a) = dict.get(a, "Group Name")
     let assert Ok(group_name_b) = dict.get(b, "Group Name")
