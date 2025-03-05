@@ -1,11 +1,9 @@
 import gleam/bool
 import gleam/dict
 import gleam/float
-import gleam/function
 import gleam/int
 import gleam/io
 import gleam/list
-import gleam/option
 import gleam/otp/task
 import gleam/result
 import gleam/string
@@ -28,6 +26,14 @@ pub type Error {
   FailedToFetchQuestions(canvas.Error)
   FailedAsync
   FailedToWriteToFile(simplifile.FileError)
+  FailedToFetchStudentData
+  FailedToCreatePointDistribution
+
+  FailedToDivide
+  FailedToFetchGroupPoints
+  FailedToFetchStudentName
+
+  QuestionIsNotNumeric
 }
 
 type QuizSubmission {
@@ -35,6 +41,16 @@ type QuizSubmission {
     user: user.User,
     quiz: quiz.Quiz,
     q_and_a: List(#(question.Question, submissions.Answer)),
+  )
+}
+
+type StudentData {
+  StudentData(
+    question: question.Question,
+    answer: submissions.Answer,
+    name: String,
+    group_name: String,
+    scale: Float,
   )
 }
 
@@ -130,7 +146,7 @@ pub fn fetch_student_ratings(
   course_id course_id: Int,
   filepath filepath: String,
 ) {
-  let weeks = list.range(from: 3, to: 6)
+  let weeks = list.range(from: 3, to: 7)
 
   let tasks = {
     use week <- list.map(weeks)
@@ -139,19 +155,22 @@ pub fn fetch_student_ratings(
 
     let quiz_title = "Week " <> int.to_string(week)
 
-    use submissions <- result.map(over: fetch_submissions(
+    use submissions <- result.try(fetch_submissions(
       canvas:,
       course_id:,
       quiz_title:,
     ))
 
-    let student_names = append_student_names(submissions:)
+    use student_data <- result.try(fetch_student_data(submissions:))
 
-    let points = create_points_distribution(student_names:)
+    use points <- result.map(
+      create_points_distribution(student_data:)
+      |> result.replace_error(FailedToCreatePointDistribution),
+    )
 
     use _, point <- dict.map_values(in: points)
 
-    let point = point |> int.to_string
+    let point = point |> float.to_string
 
     [#(quiz_title, point)]
   }
@@ -255,6 +274,13 @@ fn fetch_submissions(
   |> result.map(list.flatten)
   |> result.map(result.all)
   |> result.flatten
+  |> result.map(
+    list.filter(_, fn(submission) {
+      let QuizSubmission(user: _, quiz: _, q_and_a:) = submission
+
+      list.is_empty(q_and_a) |> bool.negate
+    }),
+  )
 }
 
 fn fetch_questions(
@@ -279,26 +305,48 @@ fn fetch_questions(
   |> result.flatten
 }
 
-fn append_student_names(
-  submissions submissions: List(QuizSubmission),
-) -> List(#(question.Question, submissions.Answer, String, String)) {
-  use <- bool.guard(list.is_empty(submissions), [])
+fn fetch_group_points(submission submission: QuizSubmission) -> Result(Int, Nil) {
+  let QuizSubmission(user: _, quiz: _, q_and_a:) = submission
 
-  use acc, QuizSubmission(user: _, quiz:, q_and_a:) <- list.fold(
-    submissions,
-    [],
+  use #(question, _) <- list.find_map(q_and_a)
+
+  let prefix = "Based on this week, you need to distribute " |> string.lowercase
+
+  use <- bool.guard(
+    case question {
+      question.Text(_) -> False
+      _ -> True
+    },
+    Error(Nil),
   )
 
-  let student_names = {
+  let assert question.Text(text:) = question
+
+  use <- bool.guard(
+    text |> string.lowercase |> string.starts_with(prefix) |> bool.negate,
+    Error(Nil),
+  )
+
+  let text =
+    text
+    |> string.drop_start(string.length(prefix))
+    |> string.split_once(" ")
+
+  use #(points, _) <- result.try(text)
+
+  int.parse(points)
+}
+
+fn fetch_assigned_points(submission submission: QuizSubmission) -> Int {
+  let QuizSubmission(user: _, quiz: _, q_and_a:) = submission
+
+  {
     use #(question, answer) <- list.filter_map(q_and_a)
 
     use <- bool.guard(
-      !case question {
-        question.Numerical(text:, points: _) ->
-          text
-          |> string.lowercase
-          |> string.contains("the points distributed for ")
-        _ -> False
+      case question {
+        question.Numerical(_, _) -> False
+        _ -> True
       },
       Error(Nil),
     )
@@ -308,49 +356,112 @@ fn append_student_names(
     let prefix = "The points distributed for " |> string.lowercase
 
     use <- bool.guard(
-      !string.starts_with(string.lowercase(text), prefix),
+      text |> string.lowercase |> string.starts_with(prefix) |> bool.negate,
       Error(Nil),
     )
 
-    let name =
-      text
-      |> string.drop_start(string.length(prefix))
-
-    use <- bool.guard(string.is_empty(name), Error(Nil))
-
-    let group_name = quiz.title |> string.drop_start(string.length("Week 4: "))
-
-    #(question, answer, name, group_name) |> Ok
+    fetch_points_assigned_from_numeric_answer(answer:)
   }
-
-  list.append(acc, student_names)
+  |> int.sum
 }
 
-fn create_points_distribution(
-  student_names student_names: List(
-    #(question.Question, submissions.Answer, String, String),
-  ),
-) -> dict.Dict(#(String, String), Int) {
-  use points_distribution, #(_, answer, name, group_name) <- list.fold(
-    student_names,
-    dict.new(),
+fn fetch_student_name_from_question(
+  question question: question.Question,
+) -> Result(String, Error) {
+  use <- bool.guard(
+    case question {
+      question.Numerical(_, _) -> False
+      _ -> True
+    },
+    Error(FailedToFetchStudentName),
   )
 
-  let key = #(group_name, name)
+  let assert question.Numerical(text:, points: _) = question
 
+  let prefix = "The points distributed for " |> string.lowercase
+
+  use <- bool.guard(
+    text |> string.lowercase |> string.starts_with(prefix) |> bool.negate,
+    Error(FailedToFetchStudentName),
+  )
+
+  let name =
+    text
+    |> string.drop_start(string.length(prefix))
+
+  use <- bool.guard(string.is_empty(name), Error(FailedToFetchStudentName))
+
+  name |> Ok
+}
+
+fn fetch_student_data(
+  submissions submissions: List(QuizSubmission),
+) -> Result(List(StudentData), Error) {
+  use <- bool.guard(list.is_empty(submissions), [] |> Ok)
+
+  use acc, submission <- list.fold(submissions, [] |> Ok)
+  use acc <- result.try(acc)
+  let QuizSubmission(user: _, quiz:, q_and_a:) = submission
+
+  let group_name = quiz.title |> string.drop_start(string.length("Week 4: "))
+
+  use group_points <- result.try(
+    fetch_group_points(submission:)
+    |> result.replace_error(FailedToFetchGroupPoints),
+  )
+  let assigned_points = fetch_assigned_points(submission)
+
+  use scale <- result.map(
+    float.divide(int.to_float(group_points), int.to_float(assigned_points))
+    |> result.replace_error(FailedToDivide),
+  )
+
+  let student_data = {
+    use #(question, answer) <- list.filter_map(q_and_a)
+
+    use name <- result.map(fetch_student_name_from_question(question:))
+
+    StudentData(question:, answer:, name:, group_name:, scale:)
+  }
+
+  list.append(acc, student_data)
+}
+
+fn fetch_points_assigned_from_numeric_answer(
+  answer answer: submissions.Answer,
+) -> Result(Int, Nil) {
   let submissions.Answer(question_id: _, text:) = answer
 
   let text = text |> string.trim
 
-  let point =
-    result.or(int.parse(text), float.parse(text) |> result.map(float.round))
+  result.or(int.parse(text), float.parse(text) |> result.map(float.round))
+}
 
-  use <- bool.guard(result.is_error(point), points_distribution)
-  let assert Ok(point) = point
+fn create_points_distribution(
+  student_data student_data: List(StudentData),
+) -> Result(dict.Dict(#(String, String), Float), Nil) {
+  {
+    use StudentData(question: _, answer:, name:, group_name:, scale:) <- list.map(
+      student_data,
+    )
 
-  use maybe_point <- dict.upsert(points_distribution, key)
+    let key = #(group_name, name)
 
-  option.unwrap(maybe_point, 0) + point
+    let submissions.Answer(question_id: _, text:) = answer
+
+    let text = text |> string.trim
+
+    use point: Float <- result.map(result.or(
+      int.parse(text) |> result.map(int.to_float),
+      float.parse(text),
+    ))
+
+    let value = point *. scale
+
+    #(key, value)
+  }
+  |> result.all
+  |> result.map(dict.from_list)
 }
 
 fn defer(defer: fn() -> b, continue: fn() -> a) -> a {
