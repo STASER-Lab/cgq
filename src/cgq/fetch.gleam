@@ -25,11 +25,12 @@ pub type Error {
   FailedToListStudents(canvas.Error)
   FailedToListQuizzes(canvas.Error)
   FailedToListSubmissions(canvas.Error)
-  FailedToFetchUser(canvas.Error)
   FailedToFetchQuestions(canvas.Error)
   FailedAsync
   FailedToWriteToFile(simplifile.FileError)
 }
+
+const await_timeout_microseconds = 60_000_000
 
 pub type QuizSubmission {
   QuizSubmission(
@@ -151,6 +152,12 @@ pub fn fetch_submissions(
 
     use <- task.async
 
+    use questions <- result.try(
+      question.list_questions(canvas:, course_id:, quiz_id:)
+      |> result.map_error(FailedToFetchQuestions),
+    )
+    let question_by_id = dict.from_list(questions)
+
     use submissions <- result.map(
       submissions.list_assignment_submissions(
         canvas:,
@@ -160,23 +167,14 @@ pub fn fetch_submissions(
       |> result.map_error(FailedToListSubmissions),
     )
 
-    use submissions.Submission(id: _, user_id:, answers:) <- list.map(
-      submissions,
-    )
+    use submissions.Submission(id: _, user:, answers:) <- list.map(submissions)
 
-    use user <- result.try(
-      user.get_user(canvas:, course_id:, user_id:)
-      |> result.map_error(FailedToFetchUser),
-    )
-
-    use questions <- result.map(fetch_questions(
-      canvas:,
-      course_id:,
-      quiz_id:,
-      answers:,
-    ))
-
-    let q_and_a = list.zip(questions, answers)
+    let q_and_a = {
+      use answer <- list.filter_map(answers)
+      let submissions.Answer(question_id:, text: _) = answer
+      use question <- result.map(dict.get(question_by_id, question_id))
+      #(question, answer)
+    }
 
     QuizSubmission(user:, quiz:, q_and_a:)
   }
@@ -187,14 +185,12 @@ pub fn fetch_submissions(
     io.println("Fetched submissions for " <> quiz_title <> ".")
   })
 
-  task.try_await_all(quizzes_tasks, 10_000_000)
+  task.try_await_all(quizzes_tasks, await_timeout_microseconds)
   |> result.all
-  |> result.map(result.all)
   |> result.replace_error(FailedAsync)
+  |> result.map(result.all)
   |> result.flatten
   |> result.map(list.flatten)
-  |> result.map(result.all)
-  |> result.flatten
   |> result.map(
     list.filter(_, fn(submission) {
       let QuizSubmission(user: _, quiz: _, q_and_a:) = submission
@@ -202,28 +198,6 @@ pub fn fetch_submissions(
       list.is_empty(q_and_a) |> bool.negate
     }),
   )
-}
-
-fn fetch_questions(
-  canvas canvas: canvas.Canvas,
-  course_id course_id: Int,
-  quiz_id quiz_id: Int,
-  answers answers: List(submissions.Answer),
-) -> Result(List(question.Question), Error) {
-  let tasks = {
-    use submissions.Answer(question_id:, text: _) <- list.map(answers)
-
-    use <- task.async
-
-    question.get_single_question(canvas:, course_id:, quiz_id:, question_id:)
-    |> result.map_error(FailedToFetchQuestions)
-  }
-
-  task.try_await_all(tasks, 1_000_000)
-  |> result.all
-  |> result.replace_error(FailedAsync)
-  |> result.map(result.all)
-  |> result.flatten
 }
 
 pub fn percent_completed(
@@ -265,12 +239,7 @@ pub fn percent_completed(
       |> result.map_error(FailedToListSubmissions),
     )
 
-    use submissions.Submission(id:, user_id:, answers:) <- list.map(submissions)
-
-    let user =
-      user.get_user(canvas:, course_id:, user_id:)
-      |> result.map_error(FailedToFetchUser)
-    use user <- result.map(user)
+    use submissions.Submission(id:, user:, answers:) <- list.map(submissions)
 
     use <- bool.guard(answers |> list.is_empty, option.None)
 
@@ -278,14 +247,12 @@ pub fn percent_completed(
   }
 
   let users =
-    task.try_await_all(tasks, 10_000_000)
+    task.try_await_all(tasks, await_timeout_microseconds)
     |> result.all
-    |> result.map(result.all)
     |> result.replace_error(FailedAsync)
+    |> result.map(result.all)
     |> result.flatten
     |> result.map(list.flatten)
-    |> result.map(result.all)
-    |> result.flatten
     |> result.map(option.values)
 
   use users <- result.try(users)

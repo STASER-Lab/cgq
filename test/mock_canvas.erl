@@ -60,10 +60,13 @@ route('GET', ["api", "v1", "groups", GidS, "users"], _, _) ->
     {200, json_bin([user_json(Uid) || Uid <- MemberIds])};
 route('GET', ["api", "v1", "groups", GidS], _, _) ->
     {200, json_bin(group_json(group(list_to_integer(GidS))))};
-route('GET', ["api", "v1", "courses", "101", "quizzes", QidS, "questions", QuidS], _, _) ->
-    Key = {question, list_to_integer(QidS), list_to_integer(QuidS)},
-    [{_, Type, Text, Points}] = ets:lookup(db, Key),
-    {200, json_bin(question_json(Type, Text, Points))};
+route('GET', ["api", "v1", "courses", "101", "quizzes", QidS, "questions"], Query, _) ->
+    Qid = list_to_integer(QidS),
+    Matching = lists:sort(ets:match_object(db, {{question, Qid, '_'}, '_', '_', '_'})),
+    All =
+        [(question_json(Type, Text, Points))#{id => Quid}
+         || {{question, _, Quid}, Type, Text, Points} <- Matching],
+    {200, json_bin(paginate(All, Query, 50))};
 route('GET', ["api", "v1", "courses", "101", "quizzes"], Query, _) ->
     Term = proplists:get_value("search_term", Query, ""),
     Matching =
@@ -171,6 +174,7 @@ synthesized_submission(Aid, Uid, Questions) ->
     #{
         id => Aid * 100 + Uid,
         user_id => Uid,
+        user => user_json(Uid),
         submission_history => [#{submission_data => Answers}]
     }.
 

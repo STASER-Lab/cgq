@@ -1,9 +1,11 @@
+import gleam/bool
 import gleam/dynamic/decode
 import gleam/float
 import gleam/http
 import gleam/http/request
 import gleam/int
 import gleam/json
+import gleam/list
 import gleam/option
 import gleam/result
 
@@ -140,25 +142,52 @@ pub fn create_new_question(
   Nil
 }
 
-pub fn get_single_question(
+pub fn list_questions(
   canvas canvas: canvas.Canvas,
   course_id course_id: Int,
   quiz_id quiz_id: Int,
-  question_id question_id: Int,
-) -> Result(Question, canvas.Error) {
+) -> Result(List(#(Int, Question)), canvas.Error) {
+  loop_list_questions(canvas:, course_id:, quiz_id:, page: 1, questions: [])
+}
+
+fn loop_list_questions(
+  canvas canvas: canvas.Canvas,
+  course_id course_id: Int,
+  quiz_id quiz_id: Int,
+  page page: Int,
+  questions acc: List(#(Int, Question)),
+) -> Result(List(#(Int, Question)), canvas.Error) {
   let endpoint =
     "courses/"
     <> int.to_string(course_id)
     <> "/quizzes/"
     <> int.to_string(quiz_id)
-    <> "/questions/"
-    <> int.to_string(question_id)
+    <> "/questions?page="
+    <> int.to_string(page)
 
   use req <- result.try(canvas.request(canvas:, endpoint:))
 
   use res <- result.try(canvas.send(req:))
 
-  res
-  |> json.parse(using: decoder())
-  |> result.map_error(canvas.FailedToParseJson)
+  use questions <- result.try(
+    res
+    |> json.parse(using: decode.list(entry_decoder()))
+    |> result.map_error(canvas.FailedToParseJson),
+  )
+
+  use <- bool.guard(list.is_empty(questions), Ok(acc))
+
+  loop_list_questions(
+    canvas:,
+    course_id:,
+    quiz_id:,
+    page: page + 1,
+    questions: list.append(acc, questions),
+  )
+}
+
+fn entry_decoder() -> decode.Decoder(#(Int, Question)) {
+  use id <- decode.field("id", decode.int)
+  use question <- decode.then(decoder())
+  decode.success(#(id, question))
 }

@@ -4,9 +4,10 @@ import gleam/json
 import gleam/result
 
 import canvas
+import canvas/user
 
 pub type Submission {
-  Submission(id: Int, user_id: Int, answers: List(Answer))
+  Submission(id: Int, user: user.User, answers: List(Answer))
 }
 
 pub type Answer {
@@ -22,7 +23,7 @@ fn decoder() -> decode.Decoder(Submission) {
   }
 
   use id <- decode.field("id", decode.int)
-  use user_id <- decode.field("user_id", decode.int)
+  use submitter <- decode.field("user", user.decoder())
   use answers <- decode.field(
     "submission_history",
     decode.at(
@@ -36,7 +37,7 @@ fn decoder() -> decode.Decoder(Submission) {
     ),
   )
 
-  decode.success(Submission(id:, user_id:, answers:))
+  decode.success(Submission(id:, user: submitter, answers:))
 }
 
 pub fn list_assignment_submissions(
@@ -49,7 +50,7 @@ pub fn list_assignment_submissions(
     <> int.to_string(course_id)
     <> "/assignments/"
     <> int.to_string(assignment_id)
-    <> "/submissions?include=submission_history"
+    <> "/submissions?include%5B%5D=submission_history&include%5B%5D=user"
 
   use req <- result.try(canvas.request(canvas:, endpoint:))
 
