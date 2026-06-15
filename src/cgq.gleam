@@ -81,6 +81,7 @@ fn dispatch_with_canvas(
     cli.Create(
       course_id:,
       group_id:,
+      group_category_id:,
       title:,
       description:,
       quiz_type:,
@@ -119,6 +120,7 @@ fn dispatch_with_canvas(
           cgq_create.create_per_group(
             canvas:,
             course_id:,
+            group_category_id:,
             params:,
             template:,
             due_at:,
@@ -134,7 +136,10 @@ fn dispatch_with_canvas(
           cgq_list.courses(canvas:, enrollment_type:)
         cli.AssignmentGroups(course_id:) ->
           cgq_list.assignment_groups(canvas:, course_id:)
-        cli.Groups(course_id:) -> cgq_list.groups(canvas:, course_id:)
+        cli.Groups(course_id:, group_category_id:) ->
+          cgq_list.groups(canvas:, course_id:, group_category_id:)
+        cli.GroupCategories(course_id:) ->
+          cgq_list.group_categories(canvas:, course_id:)
       }
       |> result.map_error(FailedToList)
     cli.Fetch(fetch) ->

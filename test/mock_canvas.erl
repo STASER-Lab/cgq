@@ -55,6 +55,11 @@ route('GET', ["api", "v1", "courses"], _, _) ->
 route('GET', ["api", "v1", "courses", "101", "groups"], Query, _) ->
     All = [group_json(G) || G <- groups()],
     {200, json_bin(paginate(All, Query, 1))};
+route('GET', ["api", "v1", "courses", "101", "group_categories"], Query, _) ->
+    {200, json_bin(paginate([#{id => 50, name => <<"Project Teams">>}], Query, 10))};
+route('GET', ["api", "v1", "group_categories", "50", "groups"], Query, _) ->
+    All = [group_json(G) || G <- groups()],
+    {200, json_bin(paginate(All, Query, 1))};
 route('GET', ["api", "v1", "groups", GidS, "users"], _, _) ->
     {_, _, MemberIds} = group(list_to_integer(GidS)),
     {200, json_bin([user_json(Uid) || Uid <- MemberIds])};

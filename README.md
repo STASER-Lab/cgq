@@ -76,6 +76,22 @@ Which will output something like:
 └────────────────────────┴────────┴─────────┘
 ```
 
+A course can have more than one group set (Canvas calls them group
+categories). `create` defaults to **every** group in the course, so if the
+course uses groups for more than one thing, scope to a single set. List the
+sets to get a `group_category_id`:
+
+```sh
+gleam run -- list group_categories <course_id>
+```
+
+and pass it to `list groups` to see just that set, or to `create` (below) to
+make quizzes for just that set:
+
+```sh
+gleam run -- list groups <course_id> --group_category_id <group_category_id>
+```
+
 ### Create
 
 You can create a quiz using the following command:
@@ -110,8 +126,9 @@ gleam run -- create 155027 \
 gleam run -- create "<course_id>" \
     --title "Week 5" \
     --description "Weekly evaluations." \
-    --quiz_type "graded_survey" \
+    --group_category_id "<group_category_id>" \
     --assignment_group_id "<assignment_group_id>" \
+    --quiz_type "graded_survey" \
     --unlock_at "2025-02-07 23:59.999-8:00" \
     --due_at "2025-02-14 23:59.999-8:00" \
     --published "True" \
@@ -120,6 +137,11 @@ gleam run -- create "<course_id>" \
 
 > [!NOTE]
 > The group name will be added to the quiz title.
+
+> [!IMPORTANT]
+> Without `--group_category_id`, `create` makes a quiz for **every** group in
+> the course across all group sets. Pass it (from `list group_categories`) to
+> scope to one set. Use `--group_id` instead to target a single group.
 
 And it will print out the progress:
 ```

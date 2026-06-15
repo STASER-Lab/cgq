@@ -12,11 +12,13 @@ import canvas
 import canvas/assignment_groups
 import canvas/courses
 import canvas/group
+import canvas/group_categories
 
 pub type Error {
   FailedToListCourses(canvas.Error)
   FailedToListAssignmentGroups(canvas.Error)
   FailedToListGroups(canvas.Error)
+  FailedToListGroupCategories(canvas.Error)
 }
 
 pub fn courses(
@@ -86,9 +88,47 @@ pub fn assignment_groups(
   |> io.println
 }
 
-pub fn groups(canvas canvas: canvas.Canvas, course_id course_id: Int) {
+pub fn group_categories(
+  canvas canvas: canvas.Canvas,
+  course_id course_id: Int,
+) {
+  use categories <- result.map(
+    group_categories.list_group_categories(canvas:, course_id:)
+    |> result.map_error(FailedToListGroupCategories),
+  )
+
+  trellis.table(categories)
+  |> trellis.with(
+    column.new(header: "Name")
+    |> column.align(column.Left)
+    |> column.render({
+      use group_categories.GroupCategory(name:, id: _) <- trellis.param
+      name
+    }),
+  )
+  |> trellis.with(
+    column.new(header: "ID")
+    |> column.align(column.Right)
+    |> column.render({
+      use group_categories.GroupCategory(name: _, id:) <- trellis.param
+      id |> int.to_string
+    }),
+  )
+  |> trellis.to_string
+  |> io.println
+}
+
+pub fn groups(
+  canvas canvas: canvas.Canvas,
+  course_id course_id: Int,
+  group_category_id group_category_id: option.Option(Int),
+) {
   use groups <- result.map(
-    group.list_groups(canvas:, course_id:)
+    case group_category_id {
+      option.Some(group_category_id) ->
+        group.list_groups_in_category(canvas:, group_category_id:)
+      option.None -> group.list_groups(canvas:, course_id:)
+    }
     |> result.map_error(FailedToListGroups),
   )
 

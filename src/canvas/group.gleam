@@ -58,6 +58,47 @@ fn loop_list_groups(
   loop_list_groups(canvas:, course_id:, page: page + 1, groups:)
 }
 
+pub fn list_groups_in_category(
+  canvas canvas: canvas.Canvas,
+  group_category_id group_category_id: Int,
+) -> Result(List(Group), canvas.Error) {
+  loop_list_groups_in_category(canvas:, group_category_id:, page: 1, groups: [])
+}
+
+fn loop_list_groups_in_category(
+  canvas canvas: canvas.Canvas,
+  group_category_id group_category_id: Int,
+  page page: Int,
+  groups acc: List(Group),
+) -> Result(List(Group), canvas.Error) {
+  let endpoint =
+    "group_categories/"
+    <> int.to_string(group_category_id)
+    <> "/groups?page="
+    <> int.to_string(page)
+
+  use req <- result.try(canvas.request(canvas:, endpoint:))
+
+  use res <- result.try(canvas.send(req:))
+
+  let res =
+    res
+    |> json.parse(using: decode.list(decoder()))
+    |> result.map_error(canvas.FailedToParseJson)
+
+  use groups <- result.try(res)
+
+  use <- bool.guard(groups |> list.is_empty, acc |> Ok)
+
+  let groups = list.append(acc, groups)
+  loop_list_groups_in_category(
+    canvas:,
+    group_category_id:,
+    page: page + 1,
+    groups:,
+  )
+}
+
 pub fn get_group(
   canvas canvas: canvas.Canvas,
   group_id group_id: Int,

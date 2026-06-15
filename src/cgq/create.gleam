@@ -31,6 +31,7 @@ pub type Error {
 pub fn create_per_group(
   canvas canvas: canvas.Canvas,
   course_id course_id: Int,
+  group_category_id group_category_id: option.Option(Int),
   params params: quiz.QuizParams,
   template template: questions.Template,
   due_at due_at: option.Option(birl.Time),
@@ -40,7 +41,11 @@ pub fn create_per_group(
   io.println("Creating quizzes for each group...")
 
   use groups <- result.try(
-    group.list_groups(canvas, course_id:)
+    case group_category_id {
+      option.Some(group_category_id) ->
+        group.list_groups_in_category(canvas:, group_category_id:)
+      option.None -> group.list_groups(canvas:, course_id:)
+    }
     |> result.map_error(FailedToGetGroups),
   )
 

@@ -44,6 +44,7 @@ pub fn create_then_fetch_round_trip_test() {
     create.create_per_group(
       canvas:,
       course_id: 101,
+      group_category_id: option.Some(50),
       params:,
       template:,
       due_at: option.None,
