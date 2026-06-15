@@ -142,7 +142,7 @@ fn dispatch_with_canvas(
         cli.Feedback(course_id:, quiz_title:) ->
           cgq_fetch.fetch(canvas:, course_id:, quiz_title:)
           |> result.map_error(FailedToFetch)
-        cli.Evaluations(course_id:, filepath:, questions:) -> {
+        cli.Evaluations(course_id:, filepath:, questions:, title_prefix:) -> {
           use template <- result.try(
             cgq_questions.load(filepath: questions, palette:)
             |> result.map_error(FailedToLoadQuestions),
@@ -152,11 +152,17 @@ fn dispatch_with_canvas(
             course_id:,
             filepath:,
             template:,
+            title_prefix:,
           )
           |> result.map_error(FailedToEval)
         }
-        cli.PercentComplete(course_id:, filepath:) ->
-          cgq_fetch.percent_completed(canvas:, course_id:, filepath:)
+        cli.PercentComplete(course_id:, filepath:, title_prefix:) ->
+          cgq_fetch.percent_completed(
+            canvas:,
+            course_id:,
+            filepath:,
+            title_prefix:,
+          )
           |> result.map_error(FailedToFetch)
       }
     cli.Validate(questions:) -> validate(filepath: questions, palette:)

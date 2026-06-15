@@ -58,6 +58,7 @@ pub fn create_then_fetch_round_trip_test() {
       course_id: 101,
       filepath: results_path,
       template:,
+      title_prefix: "Week ",
     )
 
   let rating_when_every_rater_distributes_evenly =
@@ -85,7 +86,12 @@ pub fn create_then_fetch_round_trip_test() {
 
   let percent_path = "build/e2e_percent.csv"
   let assert Ok(Nil) =
-    fetch.percent_completed(canvas:, course_id: 101, filepath: percent_path)
+    fetch.percent_completed(
+      canvas:,
+      course_id: 101,
+      filepath: percent_path,
+      title_prefix: "Week ",
+    )
 
   let quizzes_per_student = 1
   let quizzes_total = 2

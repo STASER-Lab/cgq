@@ -5,7 +5,6 @@ import gleam/int
 import gleam/io
 import gleam/list
 import gleam/option
-import gleam/otp/task
 import gleam/result
 import gleam/string
 
@@ -18,10 +17,10 @@ import canvas/submissions
 
 import cgq/fetch
 import cgq/questions
+import cgq/title
 
 pub type Error {
   FailedToFetchSubmissions(fetch.Error)
-  FailedAsync
   FailedToWriteToFile(simplifile.FileError)
 }
 
@@ -52,42 +51,28 @@ pub fn fetch_student_ratings(
   course_id course_id: Int,
   filepath filepath: String,
   template template: questions.Template,
+  title_prefix title_prefix: String,
 ) {
-  let weeks = list.range(from: 9, to: 14)
-
   let distribute = template.distribute
-
-  let tasks = {
-    use week <- list.map(weeks)
-
-    use <- task.async
-
-    let quiz_title = "Week " <> int.to_string(week)
-
-    use submissions <- result.map(
-      fetch.fetch_submissions(canvas:, course_id:, quiz_title:)
-      |> result.map_error(FailedToFetchSubmissions),
-    )
-
-    let points = ratings_for_week(submissions:, distribute:)
-
-    use _, point <- dict.map_values(in: points)
-
-    let point = point |> float.to_string
-
-    [#(quiz_title, point)]
-  }
 
   io.println("Fetching student peer evaluations...")
 
-  let weekly_evaluations =
-    task.try_await_all(tasks, 1_000_000)
-    |> result.all
-    |> result.replace_error(FailedAsync)
-    |> result.map(result.all)
-    |> result.flatten
+  use submissions <- result.try(
+    fetch.fetch_submissions(canvas:, course_id:, quiz_title: title_prefix)
+    |> result.map_error(FailedToFetchSubmissions),
+  )
 
-  use weekly_evaluations <- result.try(weekly_evaluations)
+  let weekly_evaluations = {
+    use #(week_title, week_submissions) <- list.map(submissions_by_week(
+      submissions,
+    ))
+
+    let points = ratings_for_week(submissions: week_submissions, distribute:)
+
+    use _, point <- dict.map_values(in: points)
+
+    [#(week_title, float.to_string(point))]
+  }
 
   let weekly_evaluations = {
     use one, other <- list.fold(weekly_evaluations, dict.new())
@@ -121,6 +106,19 @@ pub fn fetch_student_ratings(
   |> result.map_error(FailedToWriteToFile)
 }
 
+fn submissions_by_week(
+  submissions submissions: List(fetch.QuizSubmission),
+) -> List(#(String, List(fetch.QuizSubmission))) {
+  {
+    use weeks, submission <- list.fold(submissions, dict.new())
+    let week = title.split(submission.quiz.title).base
+    use existing <- dict.upsert(weeks, week)
+    [submission, ..option.unwrap(existing, [])]
+  }
+  |> dict.to_list
+  |> list.sort(fn(a, b) { string.compare(a.0, b.0) })
+}
+
 pub fn ratings_for_week(
   submissions submissions: List(fetch.QuizSubmission),
   distribute distribute: questions.Distribute,
@@ -141,11 +139,7 @@ fn fetch_student_data(
   use submission <- list.flat_map(submissions)
   let fetch.QuizSubmission(user: _, quiz:, q_and_a:) = submission
 
-  let group_name =
-    quiz.title
-    |> string.split_once(": ")
-    |> result.map(fn(parts) { parts.1 })
-    |> result.unwrap(quiz.title)
+  let group_name = title.split(quiz.title).group
 
   let members = {
     use #(question, answer) <- list.filter_map(q_and_a)

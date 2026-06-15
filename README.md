@@ -191,25 +191,29 @@ Fetching...
 
 #### `fetch evals`
 
-Aggregates the peer-evaluation point distributions across weeks 9–14, normalizes
-them per group, and writes the result to CSV (defaults to `./results.csv`):
+Aggregates the peer-evaluation point distributions for every quiz whose title
+matches `--title_prefix` (default `"Week "`), normalizes them per group, and
+writes the result to CSV (defaults to `./results.csv`) with one column per
+matching base title:
 
 ```sh
 gleam run -- fetch evals <course_id> ./results.csv
+gleam run -- fetch evals <course_id> ./results.csv --title_prefix "Sprint "
 ```
+
+The weeks are discovered from the quizzes that exist — there is no hardcoded
+range. This assumes quizzes are titled `<title_prefix><...>: <group>` (the
+`<base>: <group>` shape `create` produces).
 
 The answers are parsed back out of the quizzes using the same question template
 the quizzes were created with (`--questions`, default `./questions.toml`) — if
 you created the quizzes with a custom template, fetch with that same file.
 
-> [!NOTE]
-> This assumes quizzes are titled `Week <n>: <group>` (as produced by `create`)
-> and that the weeks of interest are 9–14. Both are currently hardcoded.
-
 #### `fetch percent`
 
 Writes the fraction of weekly surveys each student has completed to CSV (defaults
-to `./percent_of_surveys_completed.csv`):
+to `./percent_of_surveys_completed.csv`), counting every quiz whose title matches
+`--title_prefix` (default `"Week "`):
 
 ```sh
 gleam run -- fetch percent <course_id> ./percent_of_surveys_completed.csv

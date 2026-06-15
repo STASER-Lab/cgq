@@ -15,6 +15,7 @@ import canvas/quiz
 
 import cgq/eval
 import cgq/questions
+import cgq/title
 
 pub type Error {
   FailedToGetGroup(canvas.Error)
@@ -108,7 +109,9 @@ fn create(
   let params =
     quiz.Create(
       ..params,
-      title: option.map(params.title, fn(title) { title <> ": " <> group_name }),
+      title: option.map(params.title, fn(base) {
+        title.for_group(base:, group: group_name)
+      }),
     )
 
   io.println("Creating quiz for group " <> group_name <> "...")

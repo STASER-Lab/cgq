@@ -40,8 +40,13 @@ pub type List {
 
 pub type Fetch {
   Feedback(course_id: Int, quiz_title: String)
-  Evaluations(course_id: Int, filepath: String, questions: String)
-  PercentComplete(course_id: Int, filepath: String)
+  Evaluations(
+    course_id: Int,
+    filepath: String,
+    questions: String,
+    title_prefix: String,
+  )
+  PercentComplete(course_id: Int, filepath: String, title_prefix: String)
 }
 
 const cli_name = "cgq"
@@ -292,7 +297,8 @@ fn evals() -> clip.Command(Args) {
     use course_id <- clip.parameter
     use filepath <- clip.parameter
     use questions <- clip.parameter
-    Evaluations(course_id:, filepath:, questions:) |> Fetch
+    use title_prefix <- clip.parameter
+    Evaluations(course_id:, filepath:, questions:, title_prefix:) |> Fetch
   })
   |> clip.arg(
     arg.new("course_id")
@@ -311,6 +317,13 @@ fn evals() -> clip.Command(Args) {
     )
     |> opt.default("./questions.toml"),
   )
+  |> clip.opt(
+    opt.new("title_prefix")
+    |> opt.help(
+      "Title prefix shared by the weekly quizzes; one CSV column per match.",
+    )
+    |> opt.default("Week "),
+  )
   |> clip.help(help.simple(
     cli_name <> " fetch evals",
     "Write peer review evals to file",
@@ -321,7 +334,8 @@ fn percent() -> clip.Command(Args) {
   clip.command({
     use course_id <- clip.parameter
     use filepath <- clip.parameter
-    PercentComplete(course_id:, filepath:) |> Fetch
+    use title_prefix <- clip.parameter
+    PercentComplete(course_id:, filepath:, title_prefix:) |> Fetch
   })
   |> clip.arg(
     arg.new("course_id")
@@ -332,6 +346,11 @@ fn percent() -> clip.Command(Args) {
     arg.new("filepath")
     |> arg.default("./percent_of_surveys_completed.csv")
     |> arg.help("The filepath to save the results to."),
+  )
+  |> clip.opt(
+    opt.new("title_prefix")
+    |> opt.help("Title prefix shared by the weekly quizzes to count.")
+    |> opt.default("Week "),
   )
   |> clip.help(help.simple(
     cli_name <> " fetch percent",

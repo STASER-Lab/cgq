@@ -230,9 +230,8 @@ pub fn percent_completed(
   canvas canvas: canvas.Canvas,
   course_id course_id: Int,
   filepath filepath: String,
+  title_prefix title_prefix: String,
 ) {
-  let quiz_title = "Week "
-
   use students <- result.try(
     courses.list_users(canvas:, course_id:, enrollment_type: courses.Student)
     |> result.map_error(FailedToListStudents),
@@ -245,7 +244,7 @@ pub fn percent_completed(
   }
 
   use quizzes <- result.try(
-    quiz.list_quizzes(canvas:, course_id:, search_term: quiz_title)
+    quiz.list_quizzes(canvas:, course_id:, search_term: title_prefix)
     |> result.map_error(FailedToListQuizzes),
   )
 
