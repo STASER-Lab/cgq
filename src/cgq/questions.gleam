@@ -32,10 +32,8 @@ pub type Problem {
   FieldMustBeInteger(key: String)
   UnknownType(found: String)
   PointsPerMemberMustBePositive
-  InstructionMustContainPointsPlaceholderFollowedBySpace
-  InstructionNeedsTextBeforePointsPlaceholder
-  MemberTextMustEndWithNamePlaceholder
-  MemberTextNeedsTextBeforeNamePlaceholder
+  MemberTextMustContainNamePlaceholder
+  MemberTextNeedsLiteralTextAroundName
 }
 
 pub type Distribute {
@@ -174,16 +172,13 @@ pub fn to_questions(
   ])
 }
 
-pub fn group_points_match_prefix(distribute distribute: Distribute) -> String {
-  let assert Ok(#(prefix, _)) =
-    string.split_once(distribute.instruction, points_placeholder)
-  prefix
-}
-
-pub fn member_name_match_prefix(distribute distribute: Distribute) -> String {
-  let assert Ok(#(prefix, _)) =
+pub fn member_name_affixes(
+  distribute distribute: Distribute,
+) -> #(String, String) {
+  let assert Ok(affixes) =
     string.split_once(distribute.member_text, name_placeholder)
-  prefix
+    as "parse_distribute guarantees member_text contains {name}"
+  affixes
 }
 
 fn expand_distribute(
@@ -294,20 +289,12 @@ fn parse_distribute(
 
   use <- ensure(points_per_member >= 1, PointsPerMemberMustBePositive)
   use <- ensure(
-    string.contains(instruction, points_placeholder <> " "),
-    InstructionMustContainPointsPlaceholderFollowedBySpace,
-  )
-  use <- ensure(
-    !string.starts_with(instruction, points_placeholder),
-    InstructionNeedsTextBeforePointsPlaceholder,
-  )
-  use <- ensure(
-    string.ends_with(member_text, name_placeholder),
-    MemberTextMustEndWithNamePlaceholder,
+    string.contains(member_text, name_placeholder),
+    MemberTextMustContainNamePlaceholder,
   )
   use <- ensure(
     member_text != name_placeholder,
-    MemberTextNeedsTextBeforeNamePlaceholder,
+    MemberTextNeedsLiteralTextAroundName,
   )
 
   DistributeQuestion(Distribute(
@@ -439,16 +426,10 @@ fn problem_message(problem: Problem) -> String {
     FieldMustBeInteger(key:) -> "field " <> quoted(key) <> " must be an integer"
     UnknownType(found:) -> "unknown question type " <> quoted(found)
     PointsPerMemberMustBePositive -> "points_per_member must be at least 1"
-    InstructionMustContainPointsPlaceholderFollowedBySpace ->
-      "instruction must contain "
-      <> quoted("{points} ")
-      <> " followed by more text"
-    InstructionNeedsTextBeforePointsPlaceholder ->
-      "instruction must have text before " <> quoted("{points}")
-    MemberTextMustEndWithNamePlaceholder ->
-      "member_text must end with " <> quoted("{name}")
-    MemberTextNeedsTextBeforeNamePlaceholder ->
-      "member_text must have text before " <> quoted("{name}")
+    MemberTextMustContainNamePlaceholder ->
+      "member_text must contain " <> quoted("{name}")
+    MemberTextNeedsLiteralTextAroundName ->
+      "member_text must have literal text around " <> quoted("{name}")
   }
 }
 
@@ -460,11 +441,8 @@ fn edit_for(problem: Problem) -> Edit {
     PointsPerMemberMustBePositive ->
       ReplaceField(field: "points_per_member", line: "points_per_member = 3")
     UnknownType(_) -> HighlightField("type")
-    InstructionMustContainPointsPlaceholderFollowedBySpace ->
-      HighlightField("instruction")
-    InstructionNeedsTextBeforePointsPlaceholder -> HighlightField("instruction")
-    MemberTextMustEndWithNamePlaceholder -> HighlightField("member_text")
-    MemberTextNeedsTextBeforeNamePlaceholder -> HighlightField("member_text")
+    MemberTextMustContainNamePlaceholder -> HighlightField("member_text")
+    MemberTextNeedsLiteralTextAroundName -> HighlightField("member_text")
     NotATable -> HighlightField("type")
   }
 }
@@ -478,14 +456,10 @@ fn help_for(problem: Problem) -> String {
     FieldMustBeInteger(key:) -> quoted(key) <> " must be a whole number"
     UnknownType(_) -> "use one of: numerical, essay, text, distribute"
     PointsPerMemberMustBePositive -> "each teammate is worth at least 1 point"
-    InstructionMustContainPointsPlaceholderFollowedBySpace ->
-      "fetch reads the point total from the words after {points}"
-    InstructionNeedsTextBeforePointsPlaceholder ->
-      "put a word or two before {points}"
-    MemberTextMustEndWithNamePlaceholder ->
-      "fetch reads each teammate's name from the text after this prefix"
-    MemberTextNeedsTextBeforeNamePlaceholder ->
-      "put a label before {name}, e.g. \"Points for {name}\""
+    MemberTextMustContainNamePlaceholder ->
+      "{name} is replaced with each teammate's name, e.g. \"Points for {name}\""
+    MemberTextNeedsLiteralTextAroundName ->
+      "fetch finds these questions by the literal text around {name}"
     NotATable -> "each [[question]] must be a table"
   }
 }

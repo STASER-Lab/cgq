@@ -6,6 +6,6 @@
 4 │ instruction = "Distribute {points} points among your {count} teammates."
 5 │ member_text = "{name}"
   · ┬─────────────────────
-  · ╰── member_text must have text before `{name}`
+  · ╰── member_text must have literal text around `{name}`
   │
-  ╰─ help: put a label before {name}, e.g. "Points for {name}"
+  ╰─ help: fetch finds these questions by the literal text around {name}

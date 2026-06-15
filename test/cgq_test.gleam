@@ -57,16 +57,28 @@ pub fn template_to_questions_test() {
 
 // --- template parsing: the fetch-side contract ---
 
-pub fn template_prefixes_test() {
+pub fn template_affixes_test() {
   let distribute = template().distribute
 
   distribute.points_per_member |> should.equal(3)
 
-  questions.group_points_match_prefix(distribute:)
-  |> should.equal("Based on this week, you need to distribute ")
+  questions.member_name_affixes(distribute:)
+  |> should.equal(#("The points distributed for ", ""))
+}
 
-  questions.member_name_match_prefix(distribute:)
-  |> should.equal("The points distributed for ")
+pub fn parse_accepts_name_anywhere_in_member_text_test() {
+  let assert Ok(template) =
+    "
+  [[question]]
+  type = \"distribute\"
+  points_per_member = 3
+  instruction = \"Distribute {points} points.\"
+  member_text = \"Rate {name} out of 5\"
+  "
+    |> questions.parse
+
+  questions.member_name_affixes(distribute: template.distribute)
+  |> should.equal(#("Rate ", " out of 5"))
 }
 
 pub fn parse_rejects_missing_distribute_test() {
@@ -79,19 +91,36 @@ pub fn parse_rejects_missing_distribute_test() {
   |> should.equal(Error(questions.TemplateMissingDistributeQuestion))
 }
 
-pub fn parse_rejects_bad_member_text_test() {
+pub fn parse_rejects_member_text_without_name_test() {
   "
   [[question]]
   type = \"distribute\"
   points_per_member = 3
   instruction = \"Distribute {points} points.\"
-  member_text = \"Points for {name}!\"
+  member_text = \"Points for the teammate\"
   "
   |> questions.parse
   |> should.equal(
     Error(questions.QuestionHasProblem(
       question_index: 0,
-      problem: questions.MemberTextMustEndWithNamePlaceholder,
+      problem: questions.MemberTextMustContainNamePlaceholder,
+    )),
+  )
+}
+
+pub fn parse_rejects_bare_name_member_text_test() {
+  "
+  [[question]]
+  type = \"distribute\"
+  points_per_member = 3
+  instruction = \"Distribute {points} points.\"
+  member_text = \"{name}\"
+  "
+  |> questions.parse
+  |> should.equal(
+    Error(questions.QuestionHasProblem(
+      question_index: 0,
+      problem: questions.MemberTextNeedsLiteralTextAroundName,
     )),
   )
 }
@@ -172,8 +201,7 @@ fn ratings_for_week(
   subs subs: List(fetch.QuizSubmission),
 ) -> dict.Dict(#(String, String), Float) {
   let distribute = template().distribute
-  let assert Ok(ratings) = eval.ratings_for_week(submissions: subs, distribute:)
-  ratings
+  eval.ratings_for_week(submissions: subs, distribute:)
 }
 
 fn rating(

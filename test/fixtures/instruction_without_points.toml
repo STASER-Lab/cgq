@@ -1,5 +1,0 @@
-[[question]]
-type = "distribute"
-points_per_member = 3
-instruction = "Distribute the points among your teammates."
-member_text = "Points for {name}"

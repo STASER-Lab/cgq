@@ -6,6 +6,6 @@
 4 │ instruction = "Distribute {points} points among your {count} teammates."
 5 │ member_text = "Points for the teammate"
   · ┬──────────────────────────────────────
-  · ╰── member_text must end with `{name}`
+  · ╰── member_text must contain `{name}`
   │
-  ╰─ help: fetch reads each teammate's name from the text after this prefix
+  ╰─ help: {name} is replaced with each teammate's name, e.g. "Points for {name}"
