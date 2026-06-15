@@ -16,7 +16,6 @@ import cgq/report
 import cli
 
 pub type Error {
-  FailedToGetArgs(String)
   FailedToGetEnvironmentVariables
   FailedToCreate(cgq_create.Error)
   FailedToList(cgq_list.Error)
@@ -29,22 +28,39 @@ pub fn main() -> Nil {
   let output_palette = stdout_palette()
   let error_palette = stderr_palette()
 
-  let outcome = {
-    use arg <- result.try(cli.cli() |> result.map_error(FailedToGetArgs))
+  case cli.cli() {
+    Error(cli.Help(text:)) -> io.println(text)
+    Error(cli.Usage(message:)) -> {
+      io.println_error(usage_error(message:, palette: error_palette))
+      halt(exit_code_failure)
+    }
+    Ok(arg) -> {
+      let outcome = case arg {
+        cli.Validate(questions:) ->
+          validate(filepath: questions, output_palette:, error_palette:)
+        _ -> dispatch_with_canvas(arg:, output_palette:, error_palette:)
+      }
 
-    case arg {
-      cli.Validate(questions:) ->
-        validate(filepath: questions, output_palette:, error_palette:)
-      _ -> dispatch_with_canvas(arg:, output_palette:, error_palette:)
+      case
+        result.map_error(outcome, fn(error) {
+          print_error(error, error_palette)
+        })
+      {
+        Ok(Nil) -> Nil
+        Error(_) -> halt(exit_code_failure)
+      }
     }
   }
+}
 
-  case
-    result.map_error(outcome, fn(error) { print_error(error, error_palette) })
-  {
-    Ok(Nil) -> Nil
-    Error(_) -> halt(exit_code_failure)
-  }
+fn usage_error(
+  message message: String,
+  palette palette: cgq_questions.Palette,
+) -> String {
+  render(
+    report.Report(message:, hint: option.Some("Run with --help to see usage.")),
+    palette,
+  )
 }
 
 const exit_code_failure = 1
@@ -237,7 +253,6 @@ fn print_error(
   palette palette: cgq_questions.Palette,
 ) -> Error {
   let output = case error {
-    FailedToGetArgs(message) -> message
     FailedToLoadQuestions(rendered:) -> rendered
     FailedToGetEnvironmentVariables ->
       render(

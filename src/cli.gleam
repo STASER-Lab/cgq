@@ -1,3 +1,4 @@
+import gleam/list
 import gleam/option
 import gleam/result
 import gleam/string
@@ -53,7 +54,17 @@ pub type Fetch {
 
 const cli_name = "cgq"
 
-pub fn cli() -> Result(Args, String) {
+/// `clip` reports both a `--help` request and a genuine parse error as
+/// `Error(String)`. We split them so the CLI can print help plainly and exit 0
+/// while painting real usage errors.
+pub type CliError {
+  Help(text: String)
+  Usage(message: String)
+}
+
+pub fn cli() -> Result(Args, CliError) {
+  let arguments = argv.load().arguments
+
   clip.subcommands([
     #("create", create()),
     #("list", list()),
@@ -64,7 +75,13 @@ pub fn cli() -> Result(Args, String) {
     cli_name,
     "Create a group quiz or fetch quiz results",
   ))
-  |> clip.run(argv.load().arguments)
+  |> clip.run(arguments)
+  |> result.map_error(fn(message) {
+    case list.contains(arguments, "--help") || list.contains(arguments, "-h") {
+      True -> Help(text: message)
+      False -> Usage(message:)
+    }
+  })
 }
 
 pub fn create() -> clip.Command(Args) {
