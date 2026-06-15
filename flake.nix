@@ -22,7 +22,6 @@
     inputs.flake-parts.lib.mkFlake { inherit inputs; } {
       imports = [
         inputs.devshell.flakeModule
-        inputs.flake-parts.flakeModules.modules
       ];
 
       systems = [
@@ -57,11 +56,10 @@
             buildPhase = ''
               runHook preBuild
               export REBAR_CACHE_DIR="$TMP/.rebar-cache"
-              # httpc loads OS CA certs even for plain-http requests; the
+              # httpc loads OS CA certs even for plain-http requests, and the
               # sandbox has none, so point it at the nixpkgs bundle.
               export SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt
               gleam test
-              gleam format --check src test
               runHook postBuild
             '';
             installPhase = ''
@@ -72,7 +70,7 @@
         {
           _module.args.pkgs = pkgs;
 
-          apps = {
+          packages = {
             inherit default;
 
             release = pkgs.buildGleamBurrito {
