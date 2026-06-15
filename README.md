@@ -1,6 +1,8 @@
-# cgq
+# Canvas Group Quiz (CGQ)
 
-Canvas Group Quiz is a gleam CLI tool to create per-group quizzes.
+`cgq` is a Gleam CLI for creating per-group quizzes on Canvas LMS and fetching
+their results. It targets a weekly peer-evaluation workflow, where each group
+gets its own graded survey built from a shared question template.
 
 ## Table of Contents
 
@@ -29,12 +31,12 @@ gleam run -- list courses <enrollment_type>
 This will show you a table of **active** course names and IDs:
 
 ```
-┌───────────────────────────────────────────────────────────────────────────────────┬────────┐
+╭───────────────────────────────────────────────────────────────────────────────────┬────────╮
 │                                       Name                                        │   ID   │
 ├───────────────────────────────────────────────────────────────────────────────────┼────────┤
 │ COSC_O 310 101 2024W2 Software Engineering                                        │ ###### │
 │ COSC_O 419O O_101 COSC_O 536K_101 2024W2 Topics in Computer Science - MINING DATA │ ###### │
-└───────────────────────────────────────────────────────────────────────────────────┴────────┘
+╰───────────────────────────────────────────────────────────────────────────────────┴────────╯
 ```
 
 If you want to assign the created quiz to a specific `assignment_group`, you can use the list assignment group command.
@@ -47,14 +49,14 @@ gleam run -- list assignment_groups <course_id>
 It will show you the following table:
 
 ```
-┌─────────────┬────────┐
+╭─────────────┬────────╮
 │    Name     │   ID   │
 ├─────────────┼────────┤
 │ Other       │ ###### │
 │ Assignments │ ###### │
 │ Project     │ ###### │
 │ Quizzes     │ ###### │
-└─────────────┴────────┘
+╰─────────────┴────────╯
 ```
 
 To get an ID for a group, you can use the command
@@ -65,7 +67,7 @@ gleam run -- list groups <course_id>
 
 Which will output something like:
 ```
-┌────────────────────────┬────────┬─────────┐
+╭────────────────────────┬────────┬─────────╮
 │          Name          │   ID   │ Members │
 ├────────────────────────┼────────┼─────────┤
 │ A                      │ ###### │       6 │
@@ -73,7 +75,7 @@ Which will output something like:
 │ Teams 15               │ ###### │       5 │
 │ Teams 21               │ ###### │       5 │
 │ The Stragglers         │ ###### │       5 │
-└────────────────────────┴────────┴─────────┘
+╰────────────────────────┴────────┴─────────╯
 ```
 
 A course can have more than one group set (Canvas calls them group
@@ -143,12 +145,12 @@ gleam run -- create "<course_id>" \
 > the course across all group sets. Pass it (from `list group_categories`) to
 > scope to one set. Use `--group_id` instead to target a single group.
 
-And it will print out the progress:
+It prints coloured progress as it works through each group:
 ```
 Creating quiz for group <group_name>...
-Created quiz with ID <quiz_id>.  Adding quiz questions...
-Questions created.  Assigning quiz to group...
-Quiz assigned.
+Created quiz with ID <quiz_id> and assignment ID <assignment_id>. Adding quiz questions...
+Questions created. Assigning quiz to group...
+Published quiz for group <group_name>.
 ```
 
 You can also make a quiz for a single group using the `<group_id>` option:
@@ -189,8 +191,8 @@ gleam run -- fetch feedback <course_id> "Week 5"
 Which will take some time as it fetches all the results. It will output
 
 ```
-Fetching...
-┌───────────────────────┬────────────────────────────────┬──────────────────────────────────────────┐
+Fetching quizzes for Week 5...
+╭───────────────────────┬────────────────────────────────┬──────────────────────────────────────────╮
 │     Student Name      │           Quiz Title           │                Complaint                 │
 ├───────────────────────┼────────────────────────────────┼──────────────────────────────────────────┤
 │ #### ######           │ Week 5: Group 1                │ ### #### ## ### ## ###### ## ##########  │
@@ -208,7 +210,7 @@ Fetching...
 │                       │                                │ ### ##### #####. #### ## ### ## ######   │
 │                       │                                │ #### #### ######## ## ######.            │
 │                       │                                │                                          │
-└───────────────────────┴────────────────────────────────┴──────────────────────────────────────────┘
+╰───────────────────────┴────────────────────────────────┴──────────────────────────────────────────╯
 ```
 
 #### `fetch evals`
@@ -223,12 +225,12 @@ gleam run -- fetch evals <course_id> ./results.csv
 gleam run -- fetch evals <course_id> ./results.csv --title_prefix "Sprint "
 ```
 
-The weeks are discovered from the quizzes that exist — there is no hardcoded
+The weeks are discovered from the quizzes that exist, so there is no hardcoded
 range. This assumes quizzes are titled `<title_prefix><...>: <group>` (the
 `<base>: <group>` shape `create` produces).
 
 The answers are parsed back out of the quizzes using the same question template
-the quizzes were created with (`--questions`, default `./questions.toml`) — if
+the quizzes were created with (`--questions`, default `./questions.toml`). If
 you created the quizzes with a custom template, fetch with that same file.
 
 #### `fetch percent`
@@ -256,7 +258,7 @@ plus an end-to-end test that drives `create`, `fetch evals`, and
 
 To test against real Canvas without touching production, UBC's beta instance
 (`https://ubc.beta.instructure.com`) is a sandbox copy of production refreshed
-weekly — generate a token there and set
+weekly. Generate a token there and set
 `CANVAS_API_DOMAIN="https://ubc.beta.instructure.com/api/v1"`.
 
 To build the release binary, use `nix`:
