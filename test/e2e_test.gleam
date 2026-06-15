@@ -41,7 +41,8 @@ pub fn rejects_bad_token_with_readable_message_test() {
 
   error |> should.equal(canvas.FailedRequestStatus(401))
 
-  canvas.error_message(error)
+  let assert option.Some(hint) = canvas.error_hint(error)
+  hint
   |> string.contains("CANVAS_API_TOKEN")
   |> should.be_true
 }

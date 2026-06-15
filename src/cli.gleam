@@ -112,7 +112,7 @@ pub fn create() -> clip.Command(Args) {
   |> clip.opt(
     opt.new("group_category_id")
     |> opt.help(
-      "Restrict per-group creation to one group set; omit to use every group in the course.",
+      "Restrict per-group creation to one group set. Omit to use every group in the course.",
     )
     |> opt.int
     |> opt.map(option.Some)
@@ -251,7 +251,7 @@ pub fn list() -> clip.Command(Args) {
       )
       |> clip.opt(
         opt.new("group_category_id")
-        |> opt.help("Restrict to one group set; omit to list every group.")
+        |> opt.help("Restrict to one group set. Omit to list every group.")
         |> opt.int
         |> opt.map(option.Some)
         |> opt.default(option.None),
@@ -356,7 +356,7 @@ fn evals() -> clip.Command(Args) {
   |> clip.opt(
     opt.new("title_prefix")
     |> opt.help(
-      "Title prefix shared by the weekly quizzes; one CSV column per match.",
+      "Title prefix shared by the weekly quizzes. One CSV column per match.",
     )
     |> opt.default("Week "),
   )

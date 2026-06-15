@@ -15,6 +15,7 @@ import canvas/quiz
 
 import cgq/eval
 import cgq/questions
+import cgq/report
 import cgq/title
 
 pub type Error {
@@ -28,23 +29,27 @@ pub type Error {
   FailedTask(task.AwaitError)
 }
 
-pub fn error_message(error error: Error) -> String {
+pub fn error_report(error error: Error) -> report.Report {
   case error {
     FailedToGetGroup(error) ->
-      "could not load the group: " <> canvas.error_message(error)
+      report.from_canvas("The group could not be loaded", error)
     FailedToGetGroups(error) ->
-      "could not list the groups: " <> canvas.error_message(error)
+      report.from_canvas("The groups could not be listed", error)
     FailedToGetGroupUsers(error) ->
-      "could not list the group members: " <> canvas.error_message(error)
+      report.from_canvas("The group members could not be listed", error)
     FailedToCreateQuiz(error) ->
-      "could not create the quiz: " <> canvas.error_message(error)
+      report.from_canvas("The quiz could not be created", error)
     FailedToCreateAssignmentOverride(error) ->
-      "could not assign the quiz to the group: " <> canvas.error_message(error)
+      report.from_canvas("The quiz could not be assigned to the group", error)
     FailedToPublish(error) ->
-      "could not publish the quiz: " <> canvas.error_message(error)
+      report.from_canvas("The quiz could not be published", error)
     FailedToCreateQuestion(error) ->
-      "could not add a quiz question: " <> canvas.error_message(error)
-    FailedTask(_) -> "a quiz-creation task did not finish"
+      report.from_canvas("A quiz question could not be added", error)
+    FailedTask(_) ->
+      report.Report(
+        message: "A quiz-creation task did not finish.",
+        hint: option.None,
+      )
   }
 }
 

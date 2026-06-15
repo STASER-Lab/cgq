@@ -5,6 +5,7 @@ import gleam/http/request
 import gleam/httpc
 import gleam/int
 import gleam/json
+import gleam/option
 import gleam/result
 
 pub type Canvas {
@@ -18,30 +19,50 @@ pub type Error {
   FailedRequestStatus(Int)
 }
 
-/// A human-readable, actionable description of a Canvas failure, for the CLI to
-/// print instead of an inspected ADT.
-pub fn error_message(error error: Error) -> String {
+/// A short description of what went wrong, for the CLI to print instead of an
+/// inspected ADT. Actionable advice lives in `error_hint`, not here.
+pub fn error_summary(error error: Error) -> String {
   case error {
-    FailedToMakeRequest ->
-      "could not build the request URL (check CANVAS_API_DOMAIN)"
-    FailedToSendRequest(_) ->
-      "could not reach Canvas (check CANVAS_API_DOMAIN and your network)"
+    FailedToMakeRequest -> "the request URL could not be built"
+    FailedToSendRequest(_) -> "Canvas could not be reached"
     FailedToParseJson(_) -> "Canvas returned a response in an unexpected format"
-    FailedRequestStatus(status) -> status_message(status)
+    FailedRequestStatus(status) -> status_summary(status)
   }
 }
 
-fn status_message(status status: Int) -> String {
+/// An actionable next step for the user, when there is an obvious one.
+pub fn error_hint(error error: Error) -> option.Option(String) {
+  case error {
+    FailedToMakeRequest ->
+      option.Some("Check that CANVAS_API_DOMAIN is a valid URL.")
+    FailedToSendRequest(_) ->
+      option.Some("Check CANVAS_API_DOMAIN and your network connection.")
+    FailedToParseJson(_) -> option.None
+    FailedRequestStatus(status) -> status_hint(status)
+  }
+}
+
+fn status_summary(status status: Int) -> String {
   case status {
-    401 -> "Canvas rejected the API token (401) — check CANVAS_API_TOKEN"
-    403 -> "permission denied (403) — the token may lack access to this course"
-    404 -> "not found (404) — check the course / group / quiz id"
+    401 -> "Canvas rejected the API token (401)"
+    403 -> "Canvas denied permission for this request (403)"
+    404 -> "the requested item was not found (404)"
     422 -> "Canvas rejected the request as invalid (422)"
-    429 -> "rate limited by Canvas (429) — try again shortly"
+    429 -> "Canvas rate limited the request (429)"
     status if status >= 500 ->
       "Canvas had a server error (" <> int.to_string(status) <> ")"
     status ->
       "Canvas returned an unexpected status (" <> int.to_string(status) <> ")"
+  }
+}
+
+fn status_hint(status status: Int) -> option.Option(String) {
+  case status {
+    401 -> option.Some("Check that CANVAS_API_TOKEN holds a valid token.")
+    403 -> option.Some("The token may not have access to this course.")
+    404 -> option.Some("Check the course, group, or quiz id.")
+    429 -> option.Some("Wait a moment and run the command again.")
+    _ -> option.None
   }
 }
 

@@ -464,7 +464,7 @@ fn help_for(problem: Problem) -> String {
   }
 }
 
-fn banner(
+pub fn banner(
   message message: String,
   help help: option.Option(String),
   palette palette: Palette,

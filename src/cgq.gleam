@@ -11,6 +11,7 @@ import cgq/eval as cgq_eval
 import cgq/fetch as cgq_fetch
 import cgq/list as cgq_list
 import cgq/questions as cgq_questions
+import cgq/report
 import cli
 
 pub type Error {
@@ -35,7 +36,7 @@ pub fn main() -> Nil {
     }
   }
 
-  case result.map_error(outcome, print_error) {
+  case result.map_error(outcome, fn(error) { print_error(error, palette) }) {
     Ok(Nil) -> Nil
     Error(_) -> halt(exit_code_failure)
   }
@@ -186,20 +187,35 @@ fn canvas_from_env() -> Result(canvas.Canvas, Error) {
   canvas.new(domain:, token:)
 }
 
-fn print_error(error error: Error) -> Error {
-  let message = case error {
+fn print_error(
+  error error: Error,
+  palette palette: cgq_questions.Palette,
+) -> Error {
+  let output = case error {
     FailedToGetArgs(message) -> message
     FailedToLoadQuestions(rendered:) -> rendered
     FailedToGetEnvironmentVariables ->
-      "CANVAS_API_TOKEN is not set — export your Canvas API token first"
-    FailedToCreate(error) ->
-      "Could not create the quiz. " <> cgq_create.error_message(error)
-    FailedToList(error) -> "Could not list. " <> cgq_list.error_message(error)
-    FailedToFetch(error) ->
-      "Could not fetch results. " <> cgq_fetch.error_message(error)
-    FailedToEval(error) ->
-      "Could not fetch evaluations. " <> cgq_eval.error_message(error)
+      render(
+        report.Report(
+          message: "CANVAS_API_TOKEN is not set.",
+          hint: option.Some(
+            "Export your Canvas API token before running this command.",
+          ),
+        ),
+        palette,
+      )
+    FailedToCreate(error) -> render(cgq_create.error_report(error), palette)
+    FailedToList(error) -> render(cgq_list.error_report(error), palette)
+    FailedToFetch(error) -> render(cgq_fetch.error_report(error), palette)
+    FailedToEval(error) -> render(cgq_eval.error_report(error), palette)
   }
-  io.println_error(message)
+  io.println_error(output)
   error
+}
+
+fn render(
+  failure failure: report.Report,
+  palette palette: cgq_questions.Palette,
+) -> String {
+  cgq_questions.banner(message: failure.message, help: failure.hint, palette:)
 }

@@ -14,6 +14,8 @@ import canvas/courses
 import canvas/group
 import canvas/group_categories
 
+import cgq/report
+
 pub type Error {
   FailedToListCourses(canvas.Error)
   FailedToListAssignmentGroups(canvas.Error)
@@ -21,16 +23,16 @@ pub type Error {
   FailedToListGroupCategories(canvas.Error)
 }
 
-pub fn error_message(error error: Error) -> String {
+pub fn error_report(error error: Error) -> report.Report {
   case error {
     FailedToListCourses(error) ->
-      "could not list courses: " <> canvas.error_message(error)
+      report.from_canvas("The courses could not be listed", error)
     FailedToListAssignmentGroups(error) ->
-      "could not list assignment groups: " <> canvas.error_message(error)
+      report.from_canvas("The assignment groups could not be listed", error)
     FailedToListGroups(error) ->
-      "could not list groups: " <> canvas.error_message(error)
+      report.from_canvas("The groups could not be listed", error)
     FailedToListGroupCategories(error) ->
-      "could not list group categories: " <> canvas.error_message(error)
+      report.from_canvas("The group sets could not be listed", error)
   }
 }
 

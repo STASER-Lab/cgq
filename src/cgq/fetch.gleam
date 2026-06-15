@@ -21,6 +21,8 @@ import canvas/quiz
 import canvas/submissions
 import canvas/user
 
+import cgq/report
+
 pub type Error {
   FailedToListStudents(canvas.Error)
   FailedToListQuizzes(canvas.Error)
@@ -30,19 +32,24 @@ pub type Error {
   FailedToWriteToFile(simplifile.FileError)
 }
 
-pub fn error_message(error error: Error) -> String {
+pub fn error_report(error error: Error) -> report.Report {
   case error {
     FailedToListStudents(error) ->
-      "could not list students: " <> canvas.error_message(error)
+      report.from_canvas("The students could not be listed", error)
     FailedToListQuizzes(error) ->
-      "could not list quizzes: " <> canvas.error_message(error)
+      report.from_canvas("The quizzes could not be listed", error)
     FailedToListSubmissions(error) ->
-      "could not list submissions: " <> canvas.error_message(error)
+      report.from_canvas("The submissions could not be listed", error)
     FailedToFetchQuestions(error) ->
-      "could not load quiz questions: " <> canvas.error_message(error)
-    FailedAsync -> "a fetch task did not finish"
+      report.from_canvas("The quiz questions could not be loaded", error)
+    FailedAsync ->
+      report.Report(message: "A fetch task did not finish.", hint: option.None)
     FailedToWriteToFile(error) ->
-      "could not write the output file: " <> simplifile.describe_error(error)
+      report.Report(
+        message: "The output file could not be written. "
+          <> simplifile.describe_error(error),
+        hint: option.Some("Check the path and that you can write to it."),
+      )
   }
 }
 

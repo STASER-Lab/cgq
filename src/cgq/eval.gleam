@@ -17,6 +17,7 @@ import canvas/submissions
 
 import cgq/fetch
 import cgq/questions
+import cgq/report
 import cgq/title
 
 pub type Error {
@@ -24,11 +25,15 @@ pub type Error {
   FailedToWriteToFile(simplifile.FileError)
 }
 
-pub fn error_message(error error: Error) -> String {
+pub fn error_report(error error: Error) -> report.Report {
   case error {
-    FailedToFetchSubmissions(error) -> fetch.error_message(error)
+    FailedToFetchSubmissions(error) -> fetch.error_report(error)
     FailedToWriteToFile(error) ->
-      "could not write the output file: " <> simplifile.describe_error(error)
+      report.Report(
+        message: "The output file could not be written. "
+          <> simplifile.describe_error(error),
+        hint: option.Some("Check the path and that you can write to it."),
+      )
   }
 }
 
