@@ -1,0 +1,10 @@
+  ╭─[ test/fixtures/missing_text_field.toml · question 1 ]
+  │
+1 │ [[question]]
+2 │ type = "numerical"
+3 │ points = 1
+4 + text = "..."
+  · ┬───────────
+  · ╰── missing required field `text`
+  │
+  ╰─ help: every question needs a `text` field

@@ -1,0 +1,5 @@
+[[question]]
+type = "distribute"
+points_per_member = 3
+instruction = "Distribute {points} points among your {count} teammates."
+member_text = "{name}"

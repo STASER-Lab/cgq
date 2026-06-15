@@ -1,0 +1,4 @@
+[[question]]
+type = "numerical"
+text = "How many issues did you have assigned this week?"
+points = "two"

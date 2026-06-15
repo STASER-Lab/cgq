@@ -42,20 +42,47 @@
               inputs.nix-gleam-burrito.overlays.default
             ]
           );
+
+          erlangPackage = pkgs.erlang_27;
+
+          default = pkgs.buildGleamApplication {
+            src = ./.;
+            inherit erlangPackage;
+          };
+
+          test = pkgs.buildGleamApplication {
+            src = ./.;
+            inherit erlangPackage;
+            pname = "cgq-test";
+            buildPhase = ''
+              runHook preBuild
+              export REBAR_CACHE_DIR="$TMP/.rebar-cache"
+              # httpc loads OS CA certs even for plain-http requests; the
+              # sandbox has none, so point it at the nixpkgs bundle.
+              export SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt
+              gleam test
+              gleam format --check src test
+              runHook postBuild
+            '';
+            installPhase = ''
+              touch $out
+            '';
+          };
         in
         {
           _module.args.pkgs = pkgs;
 
           apps = {
-            default = pkgs.buildGleamApplication {
-              src = ./.;
-              erlangPackage = pkgs.erlang_27;
-            };
+            inherit default;
 
             release = pkgs.buildGleamBurrito {
               src = ./.;
-              erlangPackage = pkgs.erlang_27;
+              inherit erlangPackage;
             };
+          };
+
+          checks = {
+            inherit default test;
           };
 
           devshells.default = {

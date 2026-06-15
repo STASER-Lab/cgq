@@ -53,7 +53,10 @@ pub fn string(input: String) -> FormValue {
   input |> String
 }
 
-pub fn optional(from input: option.Option(a), of inner_type: fn(a) -> FormValue) {
+pub fn optional(
+  from input: option.Option(a),
+  of inner_type: fn(a) -> FormValue,
+) {
   case input {
     option.Some(value) -> value |> inner_type
     option.None -> Null

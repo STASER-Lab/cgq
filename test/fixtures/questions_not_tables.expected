@@ -1,0 +1,3 @@
+✗ question must be a TOML table
+
+  help: each [[question]] must be a table

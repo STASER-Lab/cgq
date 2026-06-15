@@ -9,10 +9,18 @@
 
 !gleam.toml
 !manifest.toml
+!questions.toml
 
 !src/
 !src/*.gleam
+!src/*.erl
 !src/canvas/
 !src/canvas/*.gleam
 !src/cgq/
 !src/cgq/*.gleam
+
+!test/
+!test/*.gleam
+!test/*.erl
+!test/fixtures/
+!test/fixtures/*

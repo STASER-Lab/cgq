@@ -81,19 +81,41 @@ Which will output something like:
 You can create a quiz using the following command:
 
 > [!IMPORTANT]
-> Currently, questions can only be created in gleam code itself.
-> Future work will allow loading it through a file.
-> You can see the code in [cgq.gleam](./src/cgq.gleam).
+> The quiz questions are read from a TOML template, by default
+> [`./questions.toml`](./questions.toml). Use `--questions <path>` to point at
+> a different file. The shipped template documents the format, including the
+> `distribute` block that expands into one point-distribution question per
+> group member.
+
+Check a template without contacting Canvas (no token needed). It exits 0 on a
+valid template, or prints an error pointing at the problem and exits 1:
 
 ```sh
-gleam run -- create <course_id> \
+gleam run -- validate                  # checks ./questions.toml
+gleam run -- validate ./my-template.toml
+```
+
+```sh
+gleam run -- create 155027 \
+    --title "Week 13" \
+    --description "Weekly evaluations." \
+    --quiz_type "graded_survey" \
+    --assignment_group_id "538476" \
+    --unlock_at "2025-04-04 23:59.999-8:00" \
+    --due_at "2025-04-09 23:59.999-8:00" \
+    --published "True" \
+    --points 2
+
+
+gleam run -- create "<course_id>" \
     --title "Week 5" \
     --description "Weekly evaluations." \
     --quiz_type "graded_survey" \
     --assignment_group_id "<assignment_group_id>" \
-    --due_at "2025-02-14 23:59.999-8:00" \
     --unlock_at "2025-02-07 23:59.999-8:00" \
-    --published "False"
+    --due_at "2025-02-14 23:59.999-8:00" \
+    --published "True" \
+    --points 2
 ```
 
 > [!NOTE]
@@ -123,13 +145,23 @@ gleam run -- create <course_id> \
 
 ### Fetch
 
-You will probably want to see the results for the quiz. You can use the `fetch` 
-command to fetch quiz results. It will fetch all quizzes from the course that 
-matches the title. For example, if you set the title to "Week 5", then you can 
-get the results via
+You will probably want to see the results for the quizzes. The `fetch` command
+has three subcommands:
 
 ```sh
-gleam run -- fetch <course_id> "Week 5"
+gleam run -- fetch feedback <course_id> <quiz_title>   # print essay feedback as a table
+gleam run -- fetch evals <course_id> [filepath]        # write per-group peer-eval ratings to CSV
+gleam run -- fetch percent <course_id> [filepath]      # write per-student survey completion rates to CSV
+```
+
+#### `fetch feedback`
+
+Prints the optional essay feedback for every submission whose quiz title matches
+`<quiz_title>`. It fetches all matching quizzes in the course, so a title of
+"Week 5" returns every "Week 5: \<group\>" quiz:
+
+```sh
+gleam run -- fetch feedback <course_id> "Week 5"
 ```
 
 Which will take some time as it fetches all the results. It will output
@@ -157,6 +189,32 @@ Fetching...
 └───────────────────────┴────────────────────────────────┴──────────────────────────────────────────┘
 ```
 
+#### `fetch evals`
+
+Aggregates the peer-evaluation point distributions across weeks 9–14, normalizes
+them per group, and writes the result to CSV (defaults to `./results.csv`):
+
+```sh
+gleam run -- fetch evals <course_id> ./results.csv
+```
+
+The answers are parsed back out of the quizzes using the same question template
+the quizzes were created with (`--questions`, default `./questions.toml`) — if
+you created the quizzes with a custom template, fetch with that same file.
+
+> [!NOTE]
+> This assumes quizzes are titled `Week <n>: <group>` (as produced by `create`)
+> and that the weeks of interest are 9–14. Both are currently hardcoded.
+
+#### `fetch percent`
+
+Writes the fraction of weekly surveys each student has completed to CSV (defaults
+to `./percent_of_surveys_completed.csv`):
+
+```sh
+gleam run -- fetch percent <course_id> ./percent_of_surveys_completed.csv
+```
+
 ## Development
 
 To build locally you can use
@@ -165,19 +223,27 @@ gleam clean
 gleam run
 ```
 
-To build the release version, you will need to
+The test suite needs no Canvas credentials: `gleam test` runs the unit tests
+plus an end-to-end test that drives `create`, `fetch evals`, and
+`fetch percent` against an in-process mock Canvas server
+(`test/mock_canvas.erl`). `nix flake check` runs the same suite hermetically.
+
+To test against real Canvas without touching production, UBC's beta instance
+(`https://ubc.beta.instructure.com`) is a sandbox copy of production refreshed
+weekly — generate a token there and set
+`CANVAS_API_DOMAIN="https://ubc.beta.instructure.com/api/v1"`.
+
+To build the release binary, use `nix`:
 ```sh
-mix deps.get
-mix clean
-mix compile
-mix release
+nix build              # default package
+nix build .#release    # burrito-packaged binary
 ```
 
-This will use [burrito](https://github.com/burrito-elixir/burrito) to build the application into `burrito_out`.
+The release target uses [burrito](https://github.com/burrito-elixir/burrito) (via
+[nix-gleam-burrito](https://github.com/ethanthoma/nix-gleam-burrito)) to build a
+self-contained executable into `burrito_out`.
 
-If you want to rebuild the application, you have to clear the cache:
+Burrito caches the unpacked release, so before rebuilding you have to clear the cache:
 ```sh
 burrito_out/<binary_name> maintenance uninstall
 ```
-
-In the future, I plan to use `nix` for building the executables with a workflow for publishing.

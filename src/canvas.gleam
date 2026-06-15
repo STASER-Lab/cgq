@@ -38,11 +38,8 @@ pub fn request(
   |> request.set_header("Content-Type", "application/x-www-form-urlencoded")
 }
 
-pub fn send(
-  canvas canvas: Canvas,
-  req request: request.Request(String),
-) -> Result(String, Error) {
-  do_make_request(canvas:, request:, attempt: 1)
+pub fn send(req request: request.Request(String)) -> Result(String, Error) {
+  do_make_request(request:, attempt: 1)
 }
 
 const base_delay = 1000
@@ -50,7 +47,6 @@ const base_delay = 1000
 const max_attempts = 5
 
 fn do_make_request(
-  canvas canvas: Canvas,
   request request: request.Request(String),
   attempt attempt: Int,
 ) {
@@ -79,7 +75,7 @@ fn do_make_request(
     _, True -> Error(MaxRetriesExceeded)
     Error(_), False -> {
       process.sleep(delay)
-      do_make_request(canvas:, request:, attempt: attempt + 1)
+      do_make_request(request:, attempt: attempt + 1)
     }
   }
 }

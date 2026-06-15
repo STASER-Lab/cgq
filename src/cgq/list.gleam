@@ -56,7 +56,10 @@ pub fn courses(
   |> io.println
 }
 
-pub fn assignment_groups(canvas canvas: canvas.Canvas, course_id course_id: Int) {
+pub fn assignment_groups(
+  canvas canvas: canvas.Canvas,
+  course_id course_id: Int,
+) {
   use assignment_groups <- result.map(
     assignment_groups.list_assignment_groups(canvas:, course_id:)
     |> result.map_error(FailedToListAssignmentGroups),

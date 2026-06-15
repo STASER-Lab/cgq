@@ -1,0 +1,3 @@
+✗ template has no distribute question
+
+  help: exactly one [[question]] must set type = "distribute"

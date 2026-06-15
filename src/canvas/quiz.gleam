@@ -92,7 +92,7 @@ pub fn create_new_quiz(
       |> form.to_string,
     )
 
-  use res <- result.try(canvas.send(canvas:, req:))
+  use res <- result.try(canvas.send(req:))
 
   res
   |> json.parse(using: decoder())
@@ -120,7 +120,7 @@ pub fn publish_quiz(
       |> form.to_string,
     )
 
-  canvas.send(canvas:, req:) |> result.replace(Nil)
+  canvas.send(req:) |> result.replace(Nil)
 }
 
 pub fn list_quizzes(
@@ -157,7 +157,7 @@ fn loop_list_quizzes(
 
   use req <- result.try(canvas.request(canvas:, endpoint:))
 
-  use res <- result.try(canvas.send(canvas:, req:))
+  use res <- result.try(canvas.send(req:))
 
   let res =
     res

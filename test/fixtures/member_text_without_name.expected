@@ -1,0 +1,11 @@
+  ╭─[ test/fixtures/member_text_without_name.toml · question 1 ]
+  │
+1 │ [[question]]
+2 │ type = "distribute"
+3 │ points_per_member = 3
+4 │ instruction = "Distribute {points} points among your {count} teammates."
+5 │ member_text = "Points for the teammate"
+  · ┬──────────────────────────────────────
+  · ╰── member_text must end with `{name}`
+  │
+  ╰─ help: fetch reads each teammate's name from the text after this prefix

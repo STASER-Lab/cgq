@@ -1,9 +1,11 @@
+import canvas/courses
 import gleam/bool
 import gleam/dict
 import gleam/float
 import gleam/int
 import gleam/io
 import gleam/list
+import gleam/option
 import gleam/otp/task
 import gleam/result
 import gleam/string
@@ -20,37 +22,20 @@ import canvas/submissions
 import canvas/user
 
 pub type Error {
+  FailedToListStudents(canvas.Error)
   FailedToListQuizzes(canvas.Error)
   FailedToListSubmissions(canvas.Error)
   FailedToFetchUser(canvas.Error)
   FailedToFetchQuestions(canvas.Error)
   FailedAsync
   FailedToWriteToFile(simplifile.FileError)
-  FailedToFetchStudentData
-  FailedToCreatePointDistribution
-
-  FailedToDivide
-  FailedToFetchGroupPoints
-  FailedToFetchStudentName
-
-  QuestionIsNotNumeric
 }
 
-type QuizSubmission {
+pub type QuizSubmission {
   QuizSubmission(
     user: user.User,
     quiz: quiz.Quiz,
     q_and_a: List(#(question.Question, submissions.Answer)),
-  )
-}
-
-type StudentData {
-  StudentData(
-    question: question.Question,
-    answer: submissions.Answer,
-    name: String,
-    group_name: String,
-    scale: Float,
   )
 }
 
@@ -70,12 +55,12 @@ pub fn fetch(
     |> list.filter_map(fn(submission) {
       let QuizSubmission(user: _, quiz: _, q_and_a:) = submission
 
-      use <- bool.guard(list.is_empty(q_and_a), Error(Nil))
-
       let q_and_a = {
-        use #(_, answer) <- list.filter(q_and_a)
-        filter_answers(answer)
+        use #(question, answer) <- list.filter(q_and_a)
+        filter_answers(answer) && filter_question(question)
       }
+
+      use <- bool.guard(list.is_empty(q_and_a), Error(Nil))
 
       QuizSubmission(..submission, q_and_a:) |> Ok
     })
@@ -120,6 +105,13 @@ pub fn fetch(
   |> io.println
 }
 
+fn filter_question(question question: question.Question) -> Bool {
+  case question {
+    question.Essay(_, _) -> True
+    _ -> False
+  }
+}
+
 fn filter_answers(answer answer: submissions.Answer) -> Bool {
   let submissions.Answer(question_id: _, text:) = answer
   let text = text |> string.uppercase |> string.trim
@@ -132,7 +124,7 @@ fn filter_answers(answer answer: submissions.Answer) -> Bool {
     |> string.drop_end(string.length("</P>"))
     |> string.trim
 
-  text != "NA" && text != "N/A" && text != "NONE"
+  text != "NA" && text != "N/A" && text != "NONE" && text != "NO COMMENTS."
 }
 
 fn sanitize(text text: String) -> String {
@@ -141,78 +133,7 @@ fn sanitize(text text: String) -> String {
   |> string.drop_end(string.length("</p>"))
 }
 
-pub fn fetch_student_ratings(
-  canvas canvas: canvas.Canvas,
-  course_id course_id: Int,
-  filepath filepath: String,
-) {
-  let weeks = list.range(from: 3, to: 7)
-
-  let tasks = {
-    use week <- list.map(weeks)
-
-    use <- task.async
-
-    let quiz_title = "Week " <> int.to_string(week)
-
-    use submissions <- result.try(fetch_submissions(
-      canvas:,
-      course_id:,
-      quiz_title:,
-    ))
-
-    use student_data <- result.try(fetch_student_data(submissions:))
-
-    use points <- result.map(
-      create_points_distribution(student_data:)
-      |> result.replace_error(FailedToCreatePointDistribution),
-    )
-
-    use _, point <- dict.map_values(in: points)
-
-    let point = point |> float.to_string
-
-    [#(quiz_title, point)]
-  }
-
-  io.println("Fetching student peer evaluations...")
-
-  let weekly_evaluations =
-    task.try_await_all(tasks, 1_000_000)
-    |> result.all
-    |> result.replace_error(FailedAsync)
-    |> result.map(result.all)
-    |> result.flatten
-
-  use weekly_evaluations <- result.try(weekly_evaluations)
-
-  let weekly_evaluations = {
-    use one, other <- list.fold(weekly_evaluations, dict.new())
-
-    dict.combine(one, other, list.append)
-  }
-
-  {
-    use #(group_name, name), row <- dict.map_values(weekly_evaluations)
-
-    row
-    |> list.prepend(#("Group Name", group_name))
-    |> list.prepend(#("Name", name))
-    |> dict.from_list
-  }
-  |> dict.values
-  |> list.sort(fn(a, b) {
-    let assert Ok(group_name_a) = dict.get(a, "Group Name")
-    let assert Ok(group_name_b) = dict.get(b, "Group Name")
-
-    string.compare(group_name_a, group_name_b)
-  })
-  |> gsv.from_dicts(",", gsv.Unix)
-  |> simplifile.write(to: filepath)
-  |> result.map_error(FailedToWriteToFile)
-}
-
-fn fetch_submissions(
+pub fn fetch_submissions(
   canvas canvas: canvas.Canvas,
   course_id course_id: Int,
   quiz_title quiz_title: String,
@@ -305,163 +226,104 @@ fn fetch_questions(
   |> result.flatten
 }
 
-fn fetch_group_points(submission submission: QuizSubmission) -> Result(Int, Nil) {
-  let QuizSubmission(user: _, quiz: _, q_and_a:) = submission
+pub fn percent_completed(
+  canvas canvas: canvas.Canvas,
+  course_id course_id: Int,
+  filepath filepath: String,
+) {
+  let quiz_title = "Week "
 
-  use #(question, _) <- list.find_map(q_and_a)
-
-  let prefix = "Based on this week, you need to distribute " |> string.lowercase
-
-  use <- bool.guard(
-    case question {
-      question.Text(_) -> False
-      _ -> True
-    },
-    Error(Nil),
+  use students <- result.try(
+    courses.list_users(canvas:, course_id:, enrollment_type: courses.Student)
+    |> result.map_error(FailedToListStudents),
   )
 
-  let assert question.Text(text:) = question
+  let map = {
+    use map, student <- list.fold(students, dict.new())
 
-  use <- bool.guard(
-    text |> string.lowercase |> string.starts_with(prefix) |> bool.negate,
-    Error(Nil),
+    dict.insert(map, student, [])
+  }
+
+  use quizzes <- result.try(
+    quiz.list_quizzes(canvas:, course_id:, search_term: quiz_title)
+    |> result.map_error(FailedToListQuizzes),
   )
 
-  let text =
-    text
-    |> string.drop_start(string.length(prefix))
-    |> string.split_once(" ")
+  let total_quizzes = list.length(quizzes)
 
-  use #(points, _) <- result.try(text)
+  let tasks = {
+    use quiz <- list.map(quizzes)
+    let quiz.Quiz(id: _, assignment_id:, title: _) = quiz
 
-  int.parse(points)
-}
+    use <- task.async
 
-fn fetch_assigned_points(submission submission: QuizSubmission) -> Int {
-  let QuizSubmission(user: _, quiz: _, q_and_a:) = submission
+    use submissions <- result.map(
+      submissions.list_assignment_submissions(
+        canvas:,
+        course_id:,
+        assignment_id:,
+      )
+      |> result.map_error(FailedToListSubmissions),
+    )
+
+    use submissions.Submission(id:, user_id:, answers:) <- list.map(submissions)
+
+    let user =
+      user.get_user(canvas:, course_id:, user_id:)
+      |> result.map_error(FailedToFetchUser)
+    use user <- result.map(user)
+
+    use <- bool.guard(answers |> list.is_empty, option.None)
+
+    #(user, [id]) |> option.Some
+  }
+
+  let users =
+    task.try_await_all(tasks, 10_000_000)
+    |> result.all
+    |> result.map(result.all)
+    |> result.replace_error(FailedAsync)
+    |> result.flatten
+    |> result.map(list.flatten)
+    |> result.map(result.all)
+    |> result.flatten
+    |> result.map(option.values)
+
+  use users <- result.try(users)
+
+  let map = {
+    use map, #(user, submissions) <- list.fold(users, map)
+
+    use count <- dict.upsert(map, user)
+    let count = option.unwrap(count, [])
+
+    list.append(submissions, count)
+  }
 
   {
-    use #(question, answer) <- list.filter_map(q_and_a)
+    use rows, user, submissions <- dict.fold(map, [])
 
-    use <- bool.guard(
-      case question {
-        question.Numerical(_, _) -> False
-        _ -> True
-      },
-      Error(Nil),
-    )
+    let submissions = list.unique(submissions)
 
-    let assert question.Numerical(text:, points: _) = question
+    let count = list.length(submissions)
 
-    let prefix = "The points distributed for " |> string.lowercase
+    let percent = case total_quizzes {
+      0 -> 0.0
+      _ ->
+        int.to_float(count) /. int.to_float(total_quizzes)
+        |> float.to_precision(4)
+    }
 
-    use <- bool.guard(
-      text |> string.lowercase |> string.starts_with(prefix) |> bool.negate,
-      Error(Nil),
-    )
-
-    fetch_points_assigned_from_numeric_answer(answer:)
+    dict.new()
+    |> dict.insert("Name", user.name)
+    |> dict.insert("Student ID", user.id |> int.to_string)
+    |> dict.insert("Quizzes Completed", count |> int.to_string)
+    |> dict.insert("Percent Completed", percent |> float.to_string)
+    |> list.prepend(rows, _)
   }
-  |> int.sum
-}
-
-fn fetch_student_name_from_question(
-  question question: question.Question,
-) -> Result(String, Error) {
-  use <- bool.guard(
-    case question {
-      question.Numerical(_, _) -> False
-      _ -> True
-    },
-    Error(FailedToFetchStudentName),
-  )
-
-  let assert question.Numerical(text:, points: _) = question
-
-  let prefix = "The points distributed for " |> string.lowercase
-
-  use <- bool.guard(
-    text |> string.lowercase |> string.starts_with(prefix) |> bool.negate,
-    Error(FailedToFetchStudentName),
-  )
-
-  let name =
-    text
-    |> string.drop_start(string.length(prefix))
-
-  use <- bool.guard(string.is_empty(name), Error(FailedToFetchStudentName))
-
-  name |> Ok
-}
-
-fn fetch_student_data(
-  submissions submissions: List(QuizSubmission),
-) -> Result(List(StudentData), Error) {
-  use <- bool.guard(list.is_empty(submissions), [] |> Ok)
-
-  use acc, submission <- list.fold(submissions, [] |> Ok)
-  use acc <- result.try(acc)
-  let QuizSubmission(user: _, quiz:, q_and_a:) = submission
-
-  let group_name = quiz.title |> string.drop_start(string.length("Week 4: "))
-
-  use group_points <- result.try(
-    fetch_group_points(submission:)
-    |> result.replace_error(FailedToFetchGroupPoints),
-  )
-  let assigned_points = fetch_assigned_points(submission)
-
-  use scale <- result.map(
-    float.divide(int.to_float(group_points), int.to_float(assigned_points))
-    |> result.replace_error(FailedToDivide),
-  )
-
-  let student_data = {
-    use #(question, answer) <- list.filter_map(q_and_a)
-
-    use name <- result.map(fetch_student_name_from_question(question:))
-
-    StudentData(question:, answer:, name:, group_name:, scale:)
-  }
-
-  list.append(acc, student_data)
-}
-
-fn fetch_points_assigned_from_numeric_answer(
-  answer answer: submissions.Answer,
-) -> Result(Int, Nil) {
-  let submissions.Answer(question_id: _, text:) = answer
-
-  let text = text |> string.trim
-
-  result.or(int.parse(text), float.parse(text) |> result.map(float.round))
-}
-
-fn create_points_distribution(
-  student_data student_data: List(StudentData),
-) -> Result(dict.Dict(#(String, String), Float), Nil) {
-  {
-    use StudentData(question: _, answer:, name:, group_name:, scale:) <- list.map(
-      student_data,
-    )
-
-    let key = #(group_name, name)
-
-    let submissions.Answer(question_id: _, text:) = answer
-
-    let text = text |> string.trim
-
-    use point: Float <- result.map(result.or(
-      int.parse(text) |> result.map(int.to_float),
-      float.parse(text),
-    ))
-
-    let value = point *. scale
-
-    #(key, value)
-  }
-  |> result.all
-  |> result.map(dict.from_list)
+  |> gsv.from_dicts(",", gsv.Unix)
+  |> simplifile.write(to: filepath)
+  |> result.map_error(FailedToWriteToFile)
 }
 
 fn defer(defer: fn() -> b, continue: fn() -> a) -> a {

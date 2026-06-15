@@ -1,0 +1,11 @@
+  ╭─[ test/fixtures/instruction_starts_with_points.toml · question 1 ]
+  │
+1 │ [[question]]
+2 │ type = "distribute"
+3 │ points_per_member = 3
+4 │ instruction = "{points} points get distributed across {count} teammates."
+  · ┬────────────────────────────────────────────────────────────────────────
+  · ╰── instruction must have text before `{points}`
+5 │ member_text = "Points for {name}"
+  │
+  ╰─ help: put a word or two before {points}

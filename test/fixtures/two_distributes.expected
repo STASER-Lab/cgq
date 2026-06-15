@@ -1,0 +1,11 @@
+   ╭─[ test/fixtures/two_distributes.toml · question 2 ]
+   │
+ 7 │ [[question]]
+ 8 │ type = "distribute"
+   · ┬──────────────────
+   · ╰── template has more than one distribute question
+ 9 │ points_per_member = 2
+10 │ instruction = "Now rate {points} points across {count} teammates."
+11 │ member_text = "Rating for {name}"
+   │
+   ╰─ help: a template must have exactly one type = "distribute" question

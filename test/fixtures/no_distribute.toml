@@ -1,0 +1,8 @@
+[[question]]
+type = "numerical"
+text = "How many issues did you complete this week?"
+points = 1
+
+[[question]]
+type = "essay"
+text = "Anything the professor should know?"

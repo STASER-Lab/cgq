@@ -43,7 +43,7 @@ fn loop_list_groups(
 
   use req <- result.try(canvas.request(canvas:, endpoint:))
 
-  use res <- result.try(canvas.send(canvas:, req:))
+  use res <- result.try(canvas.send(req:))
 
   let res =
     res
@@ -66,7 +66,7 @@ pub fn get_group(
 
   use req <- result.try(canvas.request(canvas:, endpoint:))
 
-  use res <- result.try(canvas.send(canvas:, req:))
+  use res <- result.try(canvas.send(req:))
 
   res
   |> json.parse(using: decoder())
@@ -78,7 +78,7 @@ pub fn list_group_users(canvas canvas: canvas.Canvas, group_id group_id: Int) {
 
   use req <- result.try(canvas.request(canvas:, endpoint:))
 
-  use res <- result.try(canvas.send(canvas:, req:))
+  use res <- result.try(canvas.send(req:))
 
   res
   |> json.parse(using: decode.list(user.decoder()))

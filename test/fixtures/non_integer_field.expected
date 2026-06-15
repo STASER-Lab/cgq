@@ -1,0 +1,11 @@
+  ╭─[ test/fixtures/non_integer_field.toml · question 1 ]
+  │
+1 │ [[question]]
+2 │ type = "numerical"
+3 │ text = "How many issues did you have assigned this week?"
+4 - points = "two"
+  · ┬─────────────
+  · ╰── field `points` must be an integer
+4 + points = 1
+  │
+  ╰─ help: `points` must be a whole number

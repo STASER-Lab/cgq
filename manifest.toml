@@ -20,6 +20,7 @@ packages = [
   { name = "gsv", version = "3.0.2", build_tools = ["gleam"], requirements = ["gleam_stdlib", "glearray"], otp_app = "gsv", source = "hex", outer_checksum = "A828C6B4DBBA8EBF0817CFB26DA1FEEAFC0026BF044B6EF085EB36A7EB43ACE9" },
   { name = "ranger", version = "1.4.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "gleam_yielder"], otp_app = "ranger", source = "hex", outer_checksum = "C8988E8F8CDBD3E7F4D8F2E663EF76490390899C2B2885A6432E942495B3E854" },
   { name = "simplifile", version = "2.2.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_stdlib"], otp_app = "simplifile", source = "hex", outer_checksum = "0DFABEF7DC7A9E2FF4BB27B108034E60C81BEBFCB7AB816B9E7E18ED4503ACD8" },
+  { name = "tom", version = "1.1.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "tom", source = "hex", outer_checksum = "0910EE688A713994515ACAF1F486A4F05752E585B9E3209D8F35A85B234C2719" },
   { name = "trellis", version = "2.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "trellis", source = "hex", outer_checksum = "37F51C0CAB0F5664B3A38A08F2D11C12C2A000BB513C4802F3647A08D79B5B77" },
 ]
 
@@ -37,4 +38,5 @@ gleam_stdlib = { version = ">= 0.34.0 and < 2.0.0" }
 gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
 gsv = { version = ">= 3.0.2 and < 4.0.0" }
 simplifile = { version = ">= 2.2.0 and < 3.0.0" }
+tom = { version = ">= 1.1.1 and < 2.0.0" }
 trellis = { version = ">= 2.0.0 and < 3.0.0" }

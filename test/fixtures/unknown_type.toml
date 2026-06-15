@@ -1,0 +1,14 @@
+[[question]]
+type = "numerical"
+text = "How many issues did you complete this week?"
+points = 1
+
+[[question]]
+type = "distribute"
+points_per_member = 3
+instruction = "Distribute {points} points among your {count} teammates."
+member_text = "Points for {name}"
+
+[[question]]
+type = "checkbox"
+text = "Tick all that apply"

@@ -135,7 +135,7 @@ pub fn create_new_question(
     |> request.set_method(http.Post)
     |> request.set_body(question |> encoder() |> form.to_string)
 
-  use _ <- result.map(canvas.send(canvas:, req:))
+  use _ <- result.map(canvas.send(req:))
 
   Nil
 }
@@ -156,7 +156,7 @@ pub fn get_single_question(
 
   use req <- result.try(canvas.request(canvas:, endpoint:))
 
-  use res <- result.try(canvas.send(canvas:, req:))
+  use res <- result.try(canvas.send(req:))
 
   res
   |> json.parse(using: decoder())

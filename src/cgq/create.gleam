@@ -10,10 +10,11 @@ import birl
 
 import canvas
 import canvas/assignment_override
-import canvas/form
 import canvas/group
-import canvas/question
 import canvas/quiz
+
+import cgq/eval
+import cgq/questions
 
 pub type Error {
   FailedToGetGroup(canvas.Error)
@@ -30,6 +31,7 @@ pub fn create_per_group(
   canvas canvas: canvas.Canvas,
   course_id course_id: Int,
   params params: quiz.QuizParams,
+  template template: questions.Template,
   due_at due_at: option.Option(birl.Time),
   unlock_at unlock_at: option.Option(birl.Time),
   published published: Bool,
@@ -48,6 +50,7 @@ pub fn create_per_group(
         canvas:,
         course_id:,
         params:,
+        template:,
         due_at:,
         unlock_at:,
         group:,
@@ -68,6 +71,7 @@ pub fn create_for_group(
   course_id course_id: Int,
   group_id group_id: Int,
   params params: quiz.QuizParams,
+  template template: questions.Template,
   due_at due_at: option.Option(birl.Time),
   unlock_at unlock_at: option.Option(birl.Time),
   published published: Bool,
@@ -77,13 +81,23 @@ pub fn create_for_group(
     |> result.map_error(FailedToGetGroup),
   )
 
-  create(canvas:, course_id:, params:, due_at:, unlock_at:, group:, published:)
+  create(
+    canvas:,
+    course_id:,
+    params:,
+    template:,
+    due_at:,
+    unlock_at:,
+    group:,
+    published:,
+  )
 }
 
 fn create(
   canvas canvas: canvas.Canvas,
   course_id course_id: Int,
   params params: quiz.QuizParams,
+  template template: questions.Template,
   due_at due_at: option.Option(birl.Time),
   unlock_at unlock_at: option.Option(birl.Time),
   group group: group.Group,
@@ -130,12 +144,16 @@ fn create(
     <> ".  Adding quiz questions...",
   )
 
-  use _ <- result.try(create_question(
-    canvas:,
-    course_id:,
-    quiz_id:,
-    student_names:,
-  ))
+  use _ <- result.try(
+    eval.create_question(
+      canvas:,
+      course_id:,
+      quiz_id:,
+      template:,
+      student_names:,
+    )
+    |> result.map_error(FailedToCreateQuestion),
+  )
 
   io.println("Questions created.  Assigning quiz to group...")
 
@@ -167,51 +185,4 @@ fn create(
   )
 
   io.println("Published.")
-}
-
-fn create_question(
-  canvas canvas: canvas.Canvas,
-  course_id course_id: Int,
-  quiz_id quiz_id: Int,
-  student_names student_names: List(String),
-) -> Result(Nil, Error) {
-  let questions =
-    [
-      [
-        question.Numerical(
-          text: "How many issues did you have assigned this week?",
-          points: option.Some(1),
-        ),
-        question.Numerical(
-          text: "How many issues did you complete this week?",
-          points: option.Some(1),
-        ),
-        question.Text(
-          text: "Based on this week, you need to distribute "
-          <> int.to_string(list.length(student_names) * 3)
-          <> " points between your team members (including yourself) in the following "
-          <> int.to_string(list.length(student_names))
-          <> " questions. Ensure the points add up correctly.",
-        ),
-      ],
-      list.map(student_names, {
-        use name <- form.parameter
-        question.Numerical(
-          text: "The points distributed for " <> name,
-          points: option.Some(1),
-        )
-      }),
-      [
-        question.Essay(
-          text: "(Optional) Please add any other comment you think the Professor should know about this week's progress."
-            <> "  For example, any blockers, conflicts within the team, etc.",
-          points: option.None,
-        ),
-      ],
-    ]
-    |> list.flatten
-
-  use _, question <- list.try_fold(questions, Nil)
-  question.create_new_question(canvas:, course_id:, quiz_id:, question:)
-  |> result.map_error(FailedToCreateQuestion)
 }

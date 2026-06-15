@@ -1,0 +1,28 @@
+# Read by both `cgq create` and `cgq fetch evals` — fetch with the same file
+# the quizzes were created with.
+#
+# type = "numerical" | "essay" | "text" | "distribute"
+# distribute expands into an instruction plus one numerical question per group
+# member. Placeholders: {points} = group size * points_per_member,
+# {count} = group size, {name} = member name (must end member_text).
+
+[[question]]
+type = "numerical"
+text = "How many issues did you have assigned this week?"
+points = 1
+
+[[question]]
+type = "numerical"
+text = "How many issues did you complete this week?"
+points = 1
+
+[[question]]
+type = "distribute"
+points_per_member = 3
+member_points = 1
+instruction = "Based on this week, you need to distribute {points} points between your team members (including yourself) in the following {count} questions. Ensure the points add up correctly."
+member_text = "The points distributed for {name}"
+
+[[question]]
+type = "essay"
+text = "(Optional) Please add any other comment you think the Professor should know about this week's progress.  For example, any blockers, conflicts within the team, etc."

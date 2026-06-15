@@ -1,0 +1,11 @@
+  ╭─[ test/fixtures/member_text_only_name.toml · question 1 ]
+  │
+1 │ [[question]]
+2 │ type = "distribute"
+3 │ points_per_member = 3
+4 │ instruction = "Distribute {points} points among your {count} teammates."
+5 │ member_text = "{name}"
+  · ┬─────────────────────
+  · ╰── member_text must have text before `{name}`
+  │
+  ╰─ help: put a label before {name}, e.g. "Points for {name}"

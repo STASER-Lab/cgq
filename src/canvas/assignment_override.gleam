@@ -86,7 +86,7 @@ pub fn create_assignment_override(
     |> request.set_method(http.Post)
     |> request.set_body(assignment_override |> encoder |> form.to_string)
 
-  use res <- result.try(canvas.send(canvas:, req:))
+  use res <- result.try(canvas.send(req:))
 
   res
   |> json.parse(using: decoder())

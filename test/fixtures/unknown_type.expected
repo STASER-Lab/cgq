@@ -1,0 +1,9 @@
+   ╭─[ test/fixtures/unknown_type.toml · question 3 ]
+   │
+12 │ [[question]]
+13 │ type = "checkbox"
+   · ┬────────────────
+   · ╰── unknown question type `checkbox`
+14 │ text = "Tick all that apply"
+   │
+   ╰─ help: use one of: numerical, essay, text, distribute

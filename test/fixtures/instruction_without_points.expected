@@ -1,0 +1,11 @@
+  ╭─[ test/fixtures/instruction_without_points.toml · question 1 ]
+  │
+1 │ [[question]]
+2 │ type = "distribute"
+3 │ points_per_member = 3
+4 │ instruction = "Distribute the points among your teammates."
+  · ┬──────────────────────────────────────────────────────────
+  · ╰── instruction must contain `{points} ` followed by more text
+5 │ member_text = "Points for {name}"
+  │
+  ╰─ help: fetch reads the point total from the words after {points}

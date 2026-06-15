@@ -31,7 +31,7 @@ pub fn get_user(
     |> canvas.request(endpoint),
   )
 
-  use res <- result.try(canvas.send(canvas:, req:))
+  use res <- result.try(canvas.send(req:))
 
   res
   |> json.parse(using: decoder())

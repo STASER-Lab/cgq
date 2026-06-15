@@ -25,9 +25,11 @@ pub type Args {
     unlock_at: option.Option(birl.Time),
     published: Bool,
     points_possible: option.Option(Int),
+    questions: String,
   )
   List(List)
   Fetch(Fetch)
+  Validate(questions: String)
 }
 
 pub type List {
@@ -38,7 +40,8 @@ pub type List {
 
 pub type Fetch {
   Feedback(course_id: Int, quiz_title: String)
-  Evaluations(course_id: Int, filepath: String)
+  Evaluations(course_id: Int, filepath: String, questions: String)
+  PercentComplete(course_id: Int, filepath: String)
 }
 
 const cli_name = "cgq"
@@ -48,6 +51,7 @@ pub fn cli() -> Result(Args, String) {
     #("create", create()),
     #("list", list()),
     #("fetch", fetch()),
+    #("validate", validate()),
   ])
   |> clip.help(help.simple(
     cli_name,
@@ -68,6 +72,7 @@ pub fn create() -> clip.Command(Args) {
     use unlock_at <- clip.parameter
     use published <- clip.parameter
     use points_possible <- clip.parameter
+    use questions <- clip.parameter
 
     Create(
       course_id:,
@@ -80,6 +85,7 @@ pub fn create() -> clip.Command(Args) {
       unlock_at:,
       published:,
       points_possible:,
+      questions:,
     )
   })
   |> clip.arg(
@@ -178,6 +184,11 @@ pub fn create() -> clip.Command(Args) {
     |> opt.map(option.Some)
     |> opt.default(option.None),
   )
+  |> clip.opt(
+    opt.new("questions")
+    |> opt.help("Path to the TOML question template.")
+    |> opt.default("./questions.toml"),
+  )
   |> clip.help(help.simple(
     cli_name <> " create",
     "Create a new quiz for this course.",
@@ -247,7 +258,11 @@ pub fn list() -> clip.Command(Args) {
 }
 
 fn fetch() -> clip.Command(Args) {
-  clip.subcommands([#("feedback", feedback()), #("evals", evals())])
+  clip.subcommands([
+    #("feedback", feedback()),
+    #("evals", evals()),
+    #("percent", percent()),
+  ])
   |> clip.help(help.simple(
     cli_name <> " fetch",
     "Fetch either the textual feedback or the peer evaluations.",
@@ -276,7 +291,8 @@ fn evals() -> clip.Command(Args) {
   clip.command({
     use course_id <- clip.parameter
     use filepath <- clip.parameter
-    Evaluations(course_id:, filepath:) |> Fetch
+    use questions <- clip.parameter
+    Evaluations(course_id:, filepath:, questions:) |> Fetch
   })
   |> clip.arg(
     arg.new("course_id")
@@ -288,8 +304,53 @@ fn evals() -> clip.Command(Args) {
     |> arg.default("./results.csv")
     |> arg.help("The filepath to save the results too."),
   )
+  |> clip.opt(
+    opt.new("questions")
+    |> opt.help(
+      "Path to the TOML question template used to create the quizzes.",
+    )
+    |> opt.default("./questions.toml"),
+  )
   |> clip.help(help.simple(
-    cli_name <> " write",
+    cli_name <> " fetch evals",
     "Write peer review evals to file",
+  ))
+}
+
+fn percent() -> clip.Command(Args) {
+  clip.command({
+    use course_id <- clip.parameter
+    use filepath <- clip.parameter
+    PercentComplete(course_id:, filepath:) |> Fetch
+  })
+  |> clip.arg(
+    arg.new("course_id")
+    |> arg.help("The unique identifier for the course.")
+    |> arg.int,
+  )
+  |> clip.arg(
+    arg.new("filepath")
+    |> arg.default("./percent_of_surveys_completed.csv")
+    |> arg.help("The filepath to save the results to."),
+  )
+  |> clip.help(help.simple(
+    cli_name <> " fetch percent",
+    "Write percent completed to file",
+  ))
+}
+
+fn validate() -> clip.Command(Args) {
+  clip.command({
+    use questions <- clip.parameter
+    Validate(questions:)
+  })
+  |> clip.arg(
+    arg.new("questions")
+    |> arg.default("./questions.toml")
+    |> arg.help("Path to the TOML question template to check."),
+  )
+  |> clip.help(help.simple(
+    cli_name <> " validate",
+    "Check a question template for errors without contacting Canvas.",
   ))
 }

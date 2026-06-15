@@ -23,7 +23,7 @@ pub fn list_assignment_groups(
 
   use req <- result.try(canvas.request(canvas:, endpoint:))
 
-  use res <- result.try(canvas.send(canvas:, req:))
+  use res <- result.try(canvas.send(req:))
 
   res
   |> json.parse(using: decode.list(decoder()))
