@@ -77,6 +77,7 @@ pub fn create_then_fetch_round_trip_test() {
       due_at: option.None,
       unlock_at: option.None,
       published: False,
+      palette: questions.no_color(),
     )
 
   let results_path = "build/e2e_results.csv"
@@ -87,6 +88,7 @@ pub fn create_then_fetch_round_trip_test() {
       filepath: results_path,
       template:,
       title_prefix: "Week ",
+      palette: questions.no_color(),
     )
 
   let rating_when_every_rater_distributes_evenly =

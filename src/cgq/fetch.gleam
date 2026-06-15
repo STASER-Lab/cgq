@@ -14,6 +14,7 @@ import gsv
 import simplifile
 import trellis
 import trellis/column
+import trellis/style
 
 import canvas
 import canvas/question
@@ -21,6 +22,8 @@ import canvas/quiz
 import canvas/submissions
 import canvas/user
 
+import cgq/pretty
+import cgq/questions
 import cgq/report
 
 pub type Error {
@@ -67,11 +70,13 @@ pub fn fetch(
   canvas canvas: canvas.Canvas,
   course_id course_id: Int,
   quiz_title quiz_title: String,
+  palette palette: questions.Palette,
 ) -> Result(Nil, Error) {
   use submissions <- result.map(fetch_submissions(
     canvas:,
     course_id:,
     quiz_title:,
+    palette:,
   ))
 
   let submissions =
@@ -90,6 +95,7 @@ pub fn fetch(
     })
 
   trellis.table(submissions)
+  |> trellis.style(style.Round)
   |> trellis.with(
     column.new(header: "Student Name")
     |> column.align(column.Left)
@@ -126,6 +132,7 @@ pub fn fetch(
     |> column.wrap(40),
   )
   |> trellis.to_string
+  |> pretty.frame(palette)
   |> io.println
 }
 
@@ -161,8 +168,12 @@ pub fn fetch_submissions(
   canvas canvas: canvas.Canvas,
   course_id course_id: Int,
   quiz_title quiz_title: String,
+  palette palette: questions.Palette,
 ) -> Result(List(QuizSubmission), Error) {
-  io.println("Fetching quizzes for " <> quiz_title <> "...")
+  pretty.progress(
+    message: "Fetching quizzes for " <> quiz_title <> "...",
+    palette:,
+  )
 
   use quizzes <- result.try(
     quiz.list_quizzes(canvas:, course_id:, search_term: quiz_title)
@@ -202,10 +213,16 @@ pub fn fetch_submissions(
     QuizSubmission(user:, quiz:, q_and_a:)
   }
 
-  io.println("Fetching quiz submissions for " <> quiz_title <> "...")
+  pretty.progress(
+    message: "Fetching quiz submissions for " <> quiz_title <> "...",
+    palette:,
+  )
 
   use <- defer(fn() {
-    io.println("Fetched submissions for " <> quiz_title <> ".")
+    pretty.progress(
+      message: "Fetched submissions for " <> quiz_title <> ".",
+      palette:,
+    )
   })
 
   task.try_await_all(quizzes_tasks, await_timeout_microseconds)

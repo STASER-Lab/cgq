@@ -5,6 +5,7 @@ import gleam/option
 import gleam/result
 import gleam/string
 import trellis/column
+import trellis/style
 
 import trellis
 
@@ -14,6 +15,8 @@ import canvas/courses
 import canvas/group
 import canvas/group_categories
 
+import cgq/pretty
+import cgq/questions
 import cgq/report
 
 pub type Error {
@@ -39,6 +42,7 @@ pub fn error_report(error error: Error) -> report.Report {
 pub fn courses(
   canvas canvas: canvas.Canvas,
   enrollment_type enrollment_type: courses.EnrollmentType,
+  palette palette: questions.Palette,
 ) {
   use courses <- result.map(
     courses.list_courses(canvas:, enrollment_type:)
@@ -52,6 +56,7 @@ pub fn courses(
   }
 
   trellis.table(courses)
+  |> trellis.style(style.Round)
   |> trellis.with(
     column.new(header: "Name")
     |> column.align(column.Left)
@@ -70,12 +75,14 @@ pub fn courses(
     }),
   )
   |> trellis.to_string
+  |> pretty.frame(palette)
   |> io.println
 }
 
 pub fn assignment_groups(
   canvas canvas: canvas.Canvas,
   course_id course_id: Int,
+  palette palette: questions.Palette,
 ) {
   use assignment_groups <- result.map(
     assignment_groups.list_assignment_groups(canvas:, course_id:)
@@ -83,6 +90,7 @@ pub fn assignment_groups(
   )
 
   trellis.table(assignment_groups)
+  |> trellis.style(style.Round)
   |> trellis.with(
     column.new(header: "Name")
     |> column.align(column.Left)
@@ -100,12 +108,14 @@ pub fn assignment_groups(
     }),
   )
   |> trellis.to_string
+  |> pretty.frame(palette)
   |> io.println
 }
 
 pub fn group_categories(
   canvas canvas: canvas.Canvas,
   course_id course_id: Int,
+  palette palette: questions.Palette,
 ) {
   use categories <- result.map(
     group_categories.list_group_categories(canvas:, course_id:)
@@ -113,6 +123,7 @@ pub fn group_categories(
   )
 
   trellis.table(categories)
+  |> trellis.style(style.Round)
   |> trellis.with(
     column.new(header: "Name")
     |> column.align(column.Left)
@@ -130,6 +141,7 @@ pub fn group_categories(
     }),
   )
   |> trellis.to_string
+  |> pretty.frame(palette)
   |> io.println
 }
 
@@ -137,6 +149,7 @@ pub fn groups(
   canvas canvas: canvas.Canvas,
   course_id course_id: Int,
   group_category_id group_category_id: option.Option(Int),
+  palette palette: questions.Palette,
 ) {
   use groups <- result.map(
     case group_category_id {
@@ -148,6 +161,7 @@ pub fn groups(
   )
 
   trellis.table(groups)
+  |> trellis.style(style.Round)
   |> trellis.with(
     column.new(header: "Name")
     |> column.align(column.Left)
@@ -173,5 +187,6 @@ pub fn groups(
     }),
   )
   |> trellis.to_string
+  |> pretty.frame(palette)
   |> io.println
 }

@@ -1,6 +1,5 @@
 import gleam/bool
 import gleam/int
-import gleam/io
 import gleam/list
 import gleam/option
 import gleam/otp/task
@@ -14,6 +13,7 @@ import canvas/group
 import canvas/quiz
 
 import cgq/eval
+import cgq/pretty
 import cgq/questions
 import cgq/report
 import cgq/title
@@ -62,8 +62,9 @@ pub fn create_per_group(
   due_at due_at: option.Option(birl.Time),
   unlock_at unlock_at: option.Option(birl.Time),
   published published: Bool,
+  palette palette: questions.Palette,
 ) -> Result(Nil, Error) {
-  io.println("Creating quizzes for each group...")
+  pretty.progress(message: "Creating quizzes for each group...", palette:)
 
   use groups <- result.try(
     case group_category_id {
@@ -86,6 +87,7 @@ pub fn create_per_group(
         unlock_at:,
         group:,
         published:,
+        palette:,
       )
     })
   }
@@ -106,6 +108,7 @@ pub fn create_for_group(
   due_at due_at: option.Option(birl.Time),
   unlock_at unlock_at: option.Option(birl.Time),
   published published: Bool,
+  palette palette: questions.Palette,
 ) {
   use group <- result.try(
     group.get_group(canvas:, group_id:)
@@ -121,6 +124,7 @@ pub fn create_for_group(
     unlock_at:,
     group:,
     published:,
+    palette:,
   )
 }
 
@@ -133,6 +137,7 @@ fn create(
   unlock_at unlock_at: option.Option(birl.Time),
   group group: group.Group,
   published published: Bool,
+  palette palette: questions.Palette,
 ) {
   let group_name = group.name
 
@@ -144,7 +149,10 @@ fn create(
       }),
     )
 
-  io.println("Creating quiz for group " <> group_name <> "...")
+  pretty.progress(
+    message: "Creating quiz for group " <> group_name <> "...",
+    palette:,
+  )
 
   use students <- result.try(
     group.list_group_users(canvas, group.id)
@@ -169,12 +177,13 @@ fn create(
   let quiz_id = quiz.id
   let assignment_id = quiz.assignment_id
 
-  io.println(
-    "Created quiz with ID "
-    <> int.to_string(quiz_id)
-    <> " and assignment ID "
-    <> int.to_string(assignment_id)
-    <> ".  Adding quiz questions...",
+  pretty.progress(
+    message: "Created quiz with ID "
+      <> int.to_string(quiz_id)
+      <> " and assignment ID "
+      <> int.to_string(assignment_id)
+      <> ". Adding quiz questions...",
+    palette:,
   )
 
   use _ <- result.try(
@@ -188,7 +197,10 @@ fn create(
     |> result.map_error(FailedToCreateQuestion),
   )
 
-  io.println("Questions created.  Assigning quiz to group...")
+  pretty.progress(
+    message: "Questions created. Assigning quiz to group...",
+    palette:,
+  )
 
   use _ <- result.try(
     assignment_override.AssignmentOverride(
@@ -206,16 +218,26 @@ fn create(
     |> result.map_error(FailedToCreateAssignmentOverride),
   )
 
-  io.print("Quiz assigned.")
+  use <- bool.guard(when: !published, return: {
+    pretty.success(
+      message: "Quiz ready for group " <> group_name <> ".",
+      palette:,
+    )
+    Ok(Nil)
+  })
 
-  use <- bool.guard(when: !published, return: Ok(Nil))
-
-  io.println("  Publishing...")
+  pretty.progress(
+    message: "Quiz assigned. Publishing for group " <> group_name <> "...",
+    palette:,
+  )
 
   use _ <- result.map(
     quiz.publish_quiz(canvas:, course_id:, quiz_id:)
     |> result.map_error(FailedToPublish),
   )
 
-  io.println("Published.")
+  pretty.success(
+    message: "Published quiz for group " <> group_name <> ".",
+    palette:,
+  )
 }

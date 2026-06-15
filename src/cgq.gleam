@@ -10,6 +10,7 @@ import cgq/create as cgq_create
 import cgq/eval as cgq_eval
 import cgq/fetch as cgq_fetch
 import cgq/list as cgq_list
+import cgq/pretty
 import cgq/questions as cgq_questions
 import cgq/report
 import cli
@@ -25,18 +26,22 @@ pub type Error {
 }
 
 pub fn main() -> Nil {
-  let palette = stderr_palette()
+  let output_palette = stdout_palette()
+  let error_palette = stderr_palette()
 
   let outcome = {
     use arg <- result.try(cli.cli() |> result.map_error(FailedToGetArgs))
 
     case arg {
-      cli.Validate(questions:) -> validate(filepath: questions, palette:)
-      _ -> dispatch_with_canvas(arg:, palette:)
+      cli.Validate(questions:) ->
+        validate(filepath: questions, output_palette:, error_palette:)
+      _ -> dispatch_with_canvas(arg:, output_palette:, error_palette:)
     }
   }
 
-  case result.map_error(outcome, fn(error) { print_error(error, palette) }) {
+  case
+    result.map_error(outcome, fn(error) { print_error(error, error_palette) })
+  {
     Ok(Nil) -> Nil
     Error(_) -> halt(exit_code_failure)
   }
@@ -50,11 +55,24 @@ fn halt(status status: Int) -> Nil
 @external(erlang, "cgq_ffi", "stderr_is_terminal")
 fn stderr_is_terminal() -> Bool
 
+@external(erlang, "cgq_ffi", "stdout_is_terminal")
+fn stdout_is_terminal() -> Bool
+
 fn stderr_palette() -> cgq_questions.Palette {
+  palette_when_terminal(stderr_is_terminal())
+}
+
+fn stdout_palette() -> cgq_questions.Palette {
+  palette_when_terminal(stdout_is_terminal())
+}
+
+fn palette_when_terminal(
+  is_terminal is_terminal: Bool,
+) -> cgq_questions.Palette {
   let disabled = result.is_ok(envoy.get("NO_COLOR"))
   let forced = result.is_ok(envoy.get("CLICOLOR_FORCE"))
 
-  case disabled, forced || stderr_is_terminal() {
+  case disabled, forced || is_terminal {
     False, True -> cgq_questions.ansi_color()
     _, _ -> cgq_questions.no_color()
   }
@@ -62,18 +80,23 @@ fn stderr_palette() -> cgq_questions.Palette {
 
 fn validate(
   filepath filepath: String,
-  palette palette: cgq_questions.Palette,
+  output_palette output_palette: cgq_questions.Palette,
+  error_palette error_palette: cgq_questions.Palette,
 ) -> Result(Nil, Error) {
   use _template <- result.map(
-    cgq_questions.load(filepath:, palette:)
+    cgq_questions.load(filepath:, palette: error_palette)
     |> result.map_error(FailedToLoadQuestions),
   )
-  io.println("✓ " <> filepath <> " is a valid question template.")
+  pretty.success(
+    message: filepath <> " is a valid question template.",
+    palette: output_palette,
+  )
 }
 
 fn dispatch_with_canvas(
   arg arg: cli.Args,
-  palette palette: cgq_questions.Palette,
+  output_palette output_palette: cgq_questions.Palette,
+  error_palette error_palette: cgq_questions.Palette,
 ) -> Result(Nil, Error) {
   use canvas <- result.try(canvas_from_env())
 
@@ -93,7 +116,7 @@ fn dispatch_with_canvas(
       questions:,
     ) -> {
       use template <- result.try(
-        cgq_questions.load(filepath: questions, palette:)
+        cgq_questions.load(filepath: questions, palette: error_palette)
         |> result.map_error(FailedToLoadQuestions),
       )
       let params =
@@ -115,6 +138,7 @@ fn dispatch_with_canvas(
             due_at:,
             unlock_at:,
             published:,
+            palette: output_palette,
           )
         option.None ->
           cgq_create.create_per_group(
@@ -126,6 +150,7 @@ fn dispatch_with_canvas(
             due_at:,
             unlock_at:,
             published:,
+            palette: output_palette,
           )
       }
       |> result.map_error(FailedToCreate)
@@ -133,23 +158,41 @@ fn dispatch_with_canvas(
     cli.List(list) ->
       case list {
         cli.Courses(enrollment_type:) ->
-          cgq_list.courses(canvas:, enrollment_type:)
+          cgq_list.courses(canvas:, enrollment_type:, palette: output_palette)
         cli.AssignmentGroups(course_id:) ->
-          cgq_list.assignment_groups(canvas:, course_id:)
+          cgq_list.assignment_groups(
+            canvas:,
+            course_id:,
+            palette: output_palette,
+          )
         cli.Groups(course_id:, group_category_id:) ->
-          cgq_list.groups(canvas:, course_id:, group_category_id:)
+          cgq_list.groups(
+            canvas:,
+            course_id:,
+            group_category_id:,
+            palette: output_palette,
+          )
         cli.GroupCategories(course_id:) ->
-          cgq_list.group_categories(canvas:, course_id:)
+          cgq_list.group_categories(
+            canvas:,
+            course_id:,
+            palette: output_palette,
+          )
       }
       |> result.map_error(FailedToList)
     cli.Fetch(fetch) ->
       case fetch {
         cli.Feedback(course_id:, quiz_title:) ->
-          cgq_fetch.fetch(canvas:, course_id:, quiz_title:)
+          cgq_fetch.fetch(
+            canvas:,
+            course_id:,
+            quiz_title:,
+            palette: output_palette,
+          )
           |> result.map_error(FailedToFetch)
         cli.Evaluations(course_id:, filepath:, questions:, title_prefix:) -> {
           use template <- result.try(
-            cgq_questions.load(filepath: questions, palette:)
+            cgq_questions.load(filepath: questions, palette: error_palette)
             |> result.map_error(FailedToLoadQuestions),
           )
           cgq_eval.fetch_student_ratings(
@@ -158,6 +201,7 @@ fn dispatch_with_canvas(
             filepath:,
             template:,
             title_prefix:,
+            palette: output_palette,
           )
           |> result.map_error(FailedToEval)
         }
@@ -170,7 +214,8 @@ fn dispatch_with_canvas(
           )
           |> result.map_error(FailedToFetch)
       }
-    cli.Validate(questions:) -> validate(filepath: questions, palette:)
+    cli.Validate(questions:) ->
+      validate(filepath: questions, output_palette:, error_palette:)
   }
 }
 

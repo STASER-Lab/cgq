@@ -1,7 +1,6 @@
 import gleam/bool
 import gleam/dynamic/decode
 import gleam/int
-import gleam/io
 import gleam/json
 import gleam/list
 import gleam/result
@@ -33,8 +32,6 @@ fn loop_list_groups(
   page page: Int,
   groups acc: List(Group),
 ) -> Result(List(Group), canvas.Error) {
-  io.println("Fetching groups from page " <> int.to_string(page) <> "...")
-
   let endpoint =
     "courses/"
     <> int.to_string(course_id)

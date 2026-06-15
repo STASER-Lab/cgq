@@ -2,7 +2,6 @@ import gleam/bool
 import gleam/dict
 import gleam/float
 import gleam/int
-import gleam/io
 import gleam/list
 import gleam/option
 import gleam/result
@@ -16,6 +15,7 @@ import canvas/question
 import canvas/submissions
 
 import cgq/fetch
+import cgq/pretty
 import cgq/questions
 import cgq/report
 import cgq/title
@@ -65,13 +65,19 @@ pub fn fetch_student_ratings(
   filepath filepath: String,
   template template: questions.Template,
   title_prefix title_prefix: String,
+  palette palette: questions.Palette,
 ) {
   let distribute = template.distribute
 
-  io.println("Fetching student peer evaluations...")
+  pretty.progress(message: "Fetching student peer evaluations...", palette:)
 
   use submissions <- result.try(
-    fetch.fetch_submissions(canvas:, course_id:, quiz_title: title_prefix)
+    fetch.fetch_submissions(
+      canvas:,
+      course_id:,
+      quiz_title: title_prefix,
+      palette:,
+    )
     |> result.map_error(FailedToFetchSubmissions),
   )
 
