@@ -28,6 +28,26 @@ pub type Error {
   FailedTask(task.AwaitError)
 }
 
+pub fn error_message(error error: Error) -> String {
+  case error {
+    FailedToGetGroup(error) ->
+      "could not load the group: " <> canvas.error_message(error)
+    FailedToGetGroups(error) ->
+      "could not list the groups: " <> canvas.error_message(error)
+    FailedToGetGroupUsers(error) ->
+      "could not list the group members: " <> canvas.error_message(error)
+    FailedToCreateQuiz(error) ->
+      "could not create the quiz: " <> canvas.error_message(error)
+    FailedToCreateAssignmentOverride(error) ->
+      "could not assign the quiz to the group: " <> canvas.error_message(error)
+    FailedToPublish(error) ->
+      "could not publish the quiz: " <> canvas.error_message(error)
+    FailedToCreateQuestion(error) ->
+      "could not add a quiz question: " <> canvas.error_message(error)
+    FailedTask(_) -> "a quiz-creation task did not finish"
+  }
+}
+
 pub fn create_per_group(
   canvas canvas: canvas.Canvas,
   course_id course_id: Int,

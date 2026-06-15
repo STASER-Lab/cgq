@@ -11,6 +11,7 @@ import gsv
 import simplifile
 
 import canvas
+import canvas/courses
 import canvas/quiz
 import cgq/create
 import cgq/eval
@@ -19,6 +20,31 @@ import cgq/questions
 
 @external(erlang, "mock_canvas", "start")
 fn start_mock_canvas_returning_port() -> Int
+
+// A wrong token gets a 401, which is not retryable: the call must return the
+// real status immediately. If it retried (the old behavior), the backoff would
+// blow past eunit's per-test timeout, so this also guards the fast-fail.
+pub fn rejects_bad_token_with_readable_message_test() {
+  let port = start_mock_canvas_returning_port()
+  let canvas =
+    canvas.new(
+      domain: "http://127.0.0.1:" <> int.to_string(port) <> "/api/v1",
+      token: "wrong-token",
+    )
+
+  let assert Error(error) =
+    courses.list_users(
+      canvas:,
+      course_id: 101,
+      enrollment_type: courses.Student,
+    )
+
+  error |> should.equal(canvas.FailedRequestStatus(401))
+
+  canvas.error_message(error)
+  |> string.contains("CANVAS_API_TOKEN")
+  |> should.be_true
+}
 
 pub fn create_then_fetch_round_trip_test() {
   let port = start_mock_canvas_returning_port()

@@ -1,7 +1,6 @@
 import gleam/io
 import gleam/option
 import gleam/result
-import gleam/string
 
 import envoy
 
@@ -191,10 +190,15 @@ fn print_error(error error: Error) -> Error {
   let message = case error {
     FailedToGetArgs(message) -> message
     FailedToLoadQuestions(rendered:) -> rendered
-    _ ->
-      "Failed with error of "
-      <> string.inspect(error)
-      <> ".  Please use -h to see the help menu."
+    FailedToGetEnvironmentVariables ->
+      "CANVAS_API_TOKEN is not set — export your Canvas API token first"
+    FailedToCreate(error) ->
+      "Could not create the quiz. " <> cgq_create.error_message(error)
+    FailedToList(error) -> "Could not list. " <> cgq_list.error_message(error)
+    FailedToFetch(error) ->
+      "Could not fetch results. " <> cgq_fetch.error_message(error)
+    FailedToEval(error) ->
+      "Could not fetch evaluations. " <> cgq_eval.error_message(error)
   }
   io.println_error(message)
   error

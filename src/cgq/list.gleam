@@ -21,6 +21,19 @@ pub type Error {
   FailedToListGroupCategories(canvas.Error)
 }
 
+pub fn error_message(error error: Error) -> String {
+  case error {
+    FailedToListCourses(error) ->
+      "could not list courses: " <> canvas.error_message(error)
+    FailedToListAssignmentGroups(error) ->
+      "could not list assignment groups: " <> canvas.error_message(error)
+    FailedToListGroups(error) ->
+      "could not list groups: " <> canvas.error_message(error)
+    FailedToListGroupCategories(error) ->
+      "could not list group categories: " <> canvas.error_message(error)
+  }
+}
+
 pub fn courses(
   canvas canvas: canvas.Canvas,
   enrollment_type enrollment_type: courses.EnrollmentType,

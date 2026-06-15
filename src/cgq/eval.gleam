@@ -24,6 +24,14 @@ pub type Error {
   FailedToWriteToFile(simplifile.FileError)
 }
 
+pub fn error_message(error error: Error) -> String {
+  case error {
+    FailedToFetchSubmissions(error) -> fetch.error_message(error)
+    FailedToWriteToFile(error) ->
+      "could not write the output file: " <> simplifile.describe_error(error)
+  }
+}
+
 type StudentData {
   StudentData(
     answer: submissions.Answer,

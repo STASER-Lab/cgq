@@ -30,6 +30,22 @@ pub type Error {
   FailedToWriteToFile(simplifile.FileError)
 }
 
+pub fn error_message(error error: Error) -> String {
+  case error {
+    FailedToListStudents(error) ->
+      "could not list students: " <> canvas.error_message(error)
+    FailedToListQuizzes(error) ->
+      "could not list quizzes: " <> canvas.error_message(error)
+    FailedToListSubmissions(error) ->
+      "could not list submissions: " <> canvas.error_message(error)
+    FailedToFetchQuestions(error) ->
+      "could not load quiz questions: " <> canvas.error_message(error)
+    FailedAsync -> "a fetch task did not finish"
+    FailedToWriteToFile(error) ->
+      "could not write the output file: " <> simplifile.describe_error(error)
+  }
+}
+
 const await_timeout_microseconds = 60_000_000
 
 pub type QuizSubmission {
