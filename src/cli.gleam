@@ -54,9 +54,6 @@ pub type Fetch {
 
 const cli_name = "cgq"
 
-/// `clip` reports both a `--help` request and a genuine parse error as
-/// `Error(String)`. We split them so the CLI can print help plainly and exit 0
-/// while painting real usage errors.
 pub type CliError {
   Help(text: String)
   Usage(message: String)

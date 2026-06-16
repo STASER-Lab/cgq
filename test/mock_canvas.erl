@@ -21,8 +21,8 @@ start() ->
     ok = gen_tcp:controlling_process(Listen, Acceptor),
     Port.
 
-%% httpc loads OS CA certs even for plain-http requests; sandboxes (nix
-%% builds) have none, so honor SSL_CERT_FILE the way openssl tooling does.
+%% httpc loads OS CA certs even for plain-http requests, and the nix sandbox
+%% has none, so honor SSL_CERT_FILE the way openssl tooling does.
 use_cacerts_from_ssl_cert_file_env() ->
     case os:getenv("SSL_CERT_FILE") of
         false -> ok;

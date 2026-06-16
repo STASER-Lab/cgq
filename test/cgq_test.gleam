@@ -30,10 +30,6 @@ fn template() -> questions.Template {
   template
 }
 
-// --- create side: the question template ---
-// Freezes the exact questions sent to Canvas: the shipped questions.toml must
-// reproduce the original hardcoded template byte-for-byte.
-
 pub fn template_to_questions_test() {
   questions.to_questions(template: template(), student_names: [
     "Alice", "Bob", "Carol",
@@ -59,8 +55,6 @@ pub fn template_to_questions_test() {
     ),
   ])
 }
-
-// --- template parsing: the fetch-side contract ---
 
 pub fn template_affixes_test() {
   let distribute = template().distribute
@@ -145,17 +139,12 @@ pub fn parse_rejects_unknown_type_test() {
   )
 }
 
-// --- fetch side: rating aggregation ---
-// Freezes how points are parsed out of question text, rescaled per rater, and
-// normalized per group. Prefixes and multiplier now come from questions.toml.
-
 fn submission(
   group group: String,
   name name: String,
   total total: Int,
   distributed distributed: List(#(String, Int)),
 ) -> fetch.QuizSubmission {
-  // Non-distribution numericals must be ignored by the parser.
   let issues = [
     #(
       question.Numerical(
@@ -252,8 +241,6 @@ pub fn ratings_asymmetric_test() {
 }
 
 pub fn ratings_rescales_under_distribution_test() {
-  // Group total is 6 (2 members * 3). Rater B spends only 4 of 6 points; the
-  // per-rater scale should still give B's relative split full weight.
   let ratings =
     ratings_for_week(subs: [
       submission(group: "Duo", name: "A", total: 6, distributed: [
@@ -269,8 +256,6 @@ pub fn ratings_rescales_under_distribution_test() {
   close(actual: rating(ratings, "Duo", "A"), expected: 2.0)
   close(actual: rating(ratings, "Duo", "B"), expected: 4.0)
 }
-
-// --- fetch feedback: Canvas HTML to plain text, and blank detection ---
 
 pub fn html_to_text_strips_tags_and_decodes_entities_test() {
   fetch.html_to_text(
@@ -300,8 +285,6 @@ pub fn is_blank_feedback_keeps_real_feedback_test() {
   fetch.is_blank_feedback("<p>The deploy failed on Friday.</p>")
   |> should.be_false
 }
-
-// --- error rendering: cause, hint, and composed reports ---
 
 pub fn canvas_error_summary_covers_statuses_test() {
   canvas.error_summary(canvas.FailedRequestStatus(401))
@@ -368,8 +351,6 @@ pub fn fetch_error_report_async_has_no_hint_test() {
   ))
 }
 
-// --- title convention shared by create and fetch ---
-
 pub fn title_for_group_and_split_round_trip_test() {
   let joined = title.for_group(base: "Week 9", group: "The Stragglers")
 
@@ -383,8 +364,6 @@ pub fn title_split_without_separator_falls_back_test() {
   title.split("plain title")
   |> should.equal(title.Title(base: "plain title", group: "plain title"))
 }
-
-// --- table tinting ---
 
 pub fn pretty_frame_is_identity_without_colour_test() {
   let table = "╭──╮\n│ x │\n╰──╯"

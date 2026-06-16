@@ -8,11 +8,6 @@ import cgq/questions
 
 const fixtures_directory = "test/fixtures"
 
-// Each test/fixtures/<name>.toml is an intentionally broken template paired with
-// a <name>.expected snapshot of its rendered diagnostic. Read the .expected
-// files to see how every error category renders; this test keeps them honest.
-// To refresh after a deliberate rendering change: regenerate the snapshots and
-// review the diff.
 pub fn fixtures_render_expected_diagnostics_test() {
   let fixtures = fixture_paths()
 

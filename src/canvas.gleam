@@ -19,8 +19,6 @@ pub type Error {
   FailedRequestStatus(Int)
 }
 
-/// A short description of what went wrong, for the CLI to print instead of an
-/// inspected ADT. Actionable advice lives in `error_hint`, not here.
 pub fn error_summary(error error: Error) -> String {
   case error {
     FailedToMakeRequest -> "the request URL could not be built"
@@ -30,7 +28,6 @@ pub fn error_summary(error error: Error) -> String {
   }
 }
 
-/// An actionable next step for the user, when there is an obvious one.
 pub fn error_hint(error error: Error) -> option.Option(String) {
   case error {
     FailedToMakeRequest ->
@@ -127,9 +124,6 @@ fn do_make_request(
   }
 }
 
-/// Only transient failures are worth retrying. Client errors like 401/403/404
-/// will never succeed on retry, so they surface immediately instead of stalling
-/// behind five rounds of backoff.
 fn is_retryable(error error: Error) -> Bool {
   case error {
     FailedToSendRequest(_) -> True

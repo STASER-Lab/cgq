@@ -22,9 +22,6 @@ const box_characters = [
   "│", "─", "╭", "╮", "╰", "╯", "┌", "┐", "└", "┘", "┬", "┴", "├", "┤", "┼",
 ]
 
-/// Tints a rendered table's borders with the frame colour. The table is already
-/// laid out, so wrapping the box characters in colour codes cannot disturb the
-/// column widths the way colouring cells would.
 pub fn frame(
   rendered rendered: String,
   palette palette: questions.Palette,
