@@ -124,7 +124,7 @@ pub fn fetch(
         use #(_, answer) <- list.map(q_and_a)
         let submissions.Answer(question_id: _, text:) = answer
 
-        text |> sanitize
+        text |> html_to_text
       }
       |> string.join("\n")
       |> string.append("\n")
@@ -145,23 +145,65 @@ fn filter_question(question question: question.Question) -> Bool {
 
 fn filter_answers(answer answer: submissions.Answer) -> Bool {
   let submissions.Answer(question_id: _, text:) = answer
-  let text = text |> string.uppercase |> string.trim
-
-  use <- bool.guard(when: text == "", return: False)
-
-  let text =
-    text
-    |> string.drop_start(string.length("<P>"))
-    |> string.drop_end(string.length("</P>"))
-    |> string.trim
-
-  text != "NA" && text != "N/A" && text != "NONE" && text != "NO COMMENTS."
+  !is_blank_feedback(text)
 }
 
-fn sanitize(text text: String) -> String {
+const blank_feedback_sentinels = [
+  "", "NA", "N/A", "NONE", "NO COMMENT", "NO COMMENTS",
+]
+
+pub fn is_blank_feedback(html html: String) -> Bool {
+  let normalized =
+    html
+    |> html_to_text
+    |> string.uppercase
+    |> drop_trailing(".")
+    |> string.trim
+
+  list.contains(blank_feedback_sentinels, normalized)
+}
+
+pub fn html_to_text(html html: String) -> String {
+  html
+  |> string.replace("</p>", "\n")
+  |> string.replace("</P>", "\n")
+  |> string.replace("</div>", "\n")
+  |> string.replace("<br>", "\n")
+  |> string.replace("<br/>", "\n")
+  |> string.replace("<br />", "\n")
+  |> strip_tags
+  |> decode_entities
+  |> string.trim
+}
+
+fn strip_tags(html html: String) -> String {
+  html
+  |> string.split(">")
+  |> list.map(fn(segment) {
+    case string.split_once(segment, "<") {
+      Ok(#(before_tag, _)) -> before_tag
+      Error(Nil) -> segment
+    }
+  })
+  |> string.concat
+}
+
+fn decode_entities(text text: String) -> String {
   text
-  |> string.drop_start(string.length("<p>"))
-  |> string.drop_end(string.length("</p>"))
+  |> string.replace("&nbsp;", " ")
+  |> string.replace("&lt;", "<")
+  |> string.replace("&gt;", ">")
+  |> string.replace("&quot;", "\"")
+  |> string.replace("&#39;", "'")
+  |> string.replace("&amp;", "&")
+}
+
+fn drop_trailing(text text: String, suffix suffix: String) -> String {
+  let text = string.trim(text)
+  case string.ends_with(text, suffix) {
+    True -> string.drop_end(text, string.length(suffix))
+    False -> text
+  }
 }
 
 pub fn fetch_submissions(

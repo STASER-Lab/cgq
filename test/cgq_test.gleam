@@ -264,3 +264,34 @@ pub fn ratings_rescales_under_distribution_test() {
   close(actual: rating(ratings, "Duo", "A"), expected: 2.0)
   close(actual: rating(ratings, "Duo", "B"), expected: 4.0)
 }
+
+// --- fetch feedback: Canvas HTML to plain text, and blank detection ---
+
+pub fn html_to_text_strips_tags_and_decodes_entities_test() {
+  fetch.html_to_text(
+    "<p>Build broke <strong>twice</strong> &amp; CI was red.</p>",
+  )
+  |> should.equal("Build broke twice & CI was red.")
+}
+
+pub fn html_to_text_keeps_paragraph_and_line_breaks_test() {
+  fetch.html_to_text("<p>First.</p><p>Second<br>third</p>")
+  |> should.equal("First.\nSecond\nthird")
+}
+
+pub fn html_to_text_ignores_tag_attributes_test() {
+  fetch.html_to_text(
+    "<p dir=\"ltr\">See the <a href=\"http://x\">link</a>.</p>",
+  )
+  |> should.equal("See the link.")
+}
+
+pub fn is_blank_feedback_detects_stock_replies_test() {
+  ["", "<p></p>", "  NA  ", "<p>N/A</p>", "<p>none.</p>", "<p>No comments.</p>"]
+  |> list.each(fn(blank) { fetch.is_blank_feedback(blank) |> should.be_true })
+}
+
+pub fn is_blank_feedback_keeps_real_feedback_test() {
+  fetch.is_blank_feedback("<p>The deploy failed on Friday.</p>")
+  |> should.be_false
+}
