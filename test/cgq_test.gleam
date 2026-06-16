@@ -7,13 +7,18 @@ import gleam/option
 import gleeunit
 import gleeunit/should
 
+import canvas
 import canvas/question
 import canvas/quiz
 import canvas/submissions
 import canvas/user
+import cgq/create
 import cgq/eval
 import cgq/fetch
+import cgq/pretty
 import cgq/questions
+import cgq/report
+import cgq/title
 
 pub fn main() {
   gleeunit.main()
@@ -294,4 +299,103 @@ pub fn is_blank_feedback_detects_stock_replies_test() {
 pub fn is_blank_feedback_keeps_real_feedback_test() {
   fetch.is_blank_feedback("<p>The deploy failed on Friday.</p>")
   |> should.be_false
+}
+
+// --- error rendering: cause, hint, and composed reports ---
+
+pub fn canvas_error_summary_covers_statuses_test() {
+  canvas.error_summary(canvas.FailedRequestStatus(401))
+  |> should.equal("Canvas rejected the API token (401)")
+
+  canvas.error_summary(canvas.FailedRequestStatus(403))
+  |> should.equal("Canvas denied permission for this request (403)")
+
+  canvas.error_summary(canvas.FailedRequestStatus(404))
+  |> should.equal("the requested item was not found (404)")
+
+  canvas.error_summary(canvas.FailedRequestStatus(429))
+  |> should.equal("Canvas rate limited the request (429)")
+
+  canvas.error_summary(canvas.FailedRequestStatus(503))
+  |> should.equal("Canvas had a server error (503)")
+
+  canvas.error_summary(canvas.FailedRequestStatus(418))
+  |> should.equal("Canvas returned an unexpected status (418)")
+
+  canvas.error_summary(canvas.FailedToMakeRequest)
+  |> should.equal("the request URL could not be built")
+}
+
+pub fn canvas_error_hint_is_actionable_or_absent_test() {
+  canvas.error_hint(canvas.FailedRequestStatus(401))
+  |> should.equal(option.Some(
+    "Check that CANVAS_API_TOKEN holds a valid token.",
+  ))
+
+  canvas.error_hint(canvas.FailedRequestStatus(404))
+  |> should.equal(option.Some("Check the course, group, or quiz id."))
+
+  canvas.error_hint(canvas.FailedRequestStatus(422))
+  |> should.equal(option.None)
+
+  canvas.error_hint(canvas.FailedToMakeRequest)
+  |> should.equal(option.Some("Check that CANVAS_API_DOMAIN is a valid URL."))
+}
+
+pub fn report_from_canvas_joins_context_cause_and_hint_test() {
+  report.from_canvas(context: "Context", error: canvas.FailedRequestStatus(401))
+  |> should.equal(report.Report(
+    message: "Context. Canvas rejected the API token (401)",
+    hint: option.Some("Check that CANVAS_API_TOKEN holds a valid token."),
+  ))
+}
+
+pub fn create_error_report_wording_test() {
+  create.error_report(
+    create.FailedToCreateQuiz(canvas.FailedRequestStatus(404)),
+  )
+  |> should.equal(report.Report(
+    message: "The quiz could not be created. the requested item was not found (404)",
+    hint: option.Some("Check the course, group, or quiz id."),
+  ))
+}
+
+pub fn fetch_error_report_async_has_no_hint_test() {
+  fetch.error_report(fetch.FailedAsync)
+  |> should.equal(report.Report(
+    message: "A fetch task did not finish.",
+    hint: option.None,
+  ))
+}
+
+// --- title convention shared by create and fetch ---
+
+pub fn title_for_group_and_split_round_trip_test() {
+  let joined = title.for_group(base: "Week 9", group: "The Stragglers")
+
+  joined |> should.equal("Week 9: The Stragglers")
+
+  title.split(joined)
+  |> should.equal(title.Title(base: "Week 9", group: "The Stragglers"))
+}
+
+pub fn title_split_without_separator_falls_back_test() {
+  title.split("plain title")
+  |> should.equal(title.Title(base: "plain title", group: "plain title"))
+}
+
+// --- table tinting ---
+
+pub fn pretty_frame_is_identity_without_colour_test() {
+  let table = "╭──╮\n│ x │\n╰──╯"
+
+  pretty.frame(rendered: table, palette: questions.no_color())
+  |> should.equal(table)
+}
+
+pub fn pretty_frame_tints_box_characters_test() {
+  let palette = questions.ansi_color()
+
+  pretty.frame(rendered: "│", palette:)
+  |> should.equal(palette.frame <> "│" <> palette.reset)
 }
