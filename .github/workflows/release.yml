@@ -1,0 +1,29 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+      - name: Build the self-contained binary
+        run: nix build .#release -L
+      - name: Stage the binary
+        run: install -D -m755 result/bin/cgq dist/cgq-x86_64-linux
+      - name: Publish the GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/cgq-x86_64-linux
+          fail_on_unmatched_files: true
+          generate_release_notes: true

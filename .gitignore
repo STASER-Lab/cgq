@@ -4,6 +4,10 @@
 !README.md
 !LICENSE
 
+!.github/
+!.github/workflows/
+!.github/workflows/*.yml
+
 !flake.lock
 !flake.nix
 
