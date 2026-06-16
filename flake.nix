@@ -44,6 +44,11 @@
 
           erlangPackage = pkgs.erlang_27;
 
+          buildGleamBurrito =
+            (pkgs.callPackage "${inputs.nix-gleam-burrito}/builder" {
+              zig = pkgs.zig_0_13;
+            }).buildGleamBurrito;
+
           default = pkgs.buildGleamApplication {
             src = ./.;
             inherit erlangPackage;
@@ -73,7 +78,7 @@
           packages = {
             inherit default;
 
-            release = pkgs.buildGleamBurrito {
+            release = buildGleamBurrito {
               src = ./.;
               inherit erlangPackage;
             };
